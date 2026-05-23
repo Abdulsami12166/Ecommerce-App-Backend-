@@ -6,7 +6,8 @@ const path = require('path');
 require('dotenv').config();
 
 const adminRoutes = require('./routes/adminRoutes');
-const { adminLogin } = require('./middleware/adminAuthMiddleware');
+const userRoutes = require('./routes/userRoutes');
+const { adminLogin, authorizeAdmin } = require('./middleware/adminAuthMiddleware');
 const { requestLogger } = require('./middleware/requestLogger');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
@@ -28,24 +29,27 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Admin backend is running',
+    message: 'Ecommerce backend is running',
   });
 });
 
 app.get('/api/v1/health', (req, res) => {
   res.json({
     success: true,
-    message: 'Admin backend is running',
+    message: 'Ecommerce backend is running',
   });
 });
 
-app.post('/api/v1/auth/login', adminLogin);
-app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1', adminRoutes);
+/* ── Public user-auth routes ─────────────────────────── */
+app.use('/api/v1', userRoutes);
+
+/* ── Admin auth ──────────────────────────────────────── */
+app.post('/api/v1/admin/auth/login', adminLogin);
+
+/* ── Protected admin routes ──────────────────────────── */
+app.use('/api/v1/admin', authorizeAdmin, adminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
 
 module.exports = app;
-
-
