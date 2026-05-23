@@ -6,6 +6,7 @@ const path = require('path');
 require('dotenv').config();
 
 const adminRoutes = require('./routes/adminRoutes');
+const { adminLogin } = require('./middleware/adminAuthMiddleware');
 const { requestLogger } = require('./middleware/requestLogger');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
@@ -38,7 +39,9 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
+app.post('/api/v1/auth/login', adminLogin);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1', adminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
