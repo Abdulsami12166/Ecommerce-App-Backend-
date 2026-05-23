@@ -68,31 +68,65 @@ const adminMe = async (req, res, next) => {
   }
 };
 
-const authorizeAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization || req.headers.Authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.query.token || req.query.authToken;
+const authorizeAdmin = async (req, res, next) => {
+  try {
+    // Extract token from Authorization header or query params
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    let token = null;
 
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, ADMIN_JWT_SECRET);
-      if (decoded.role !== 'admin') {
-        return res.status(403).json({ success: false, message: 'Admin access required' });
+    if (authHeader) {
+      // Handle "Bearer <token>" format
+      const parts = authHeader.trim().split(/\s+/);
+      if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+        token = parts[1];
+      } else if (parts.length === 1) {
+        token = parts[0];
       }
-      req.user = decoded;
-      req.userId = decoded.id;
-      return next();
-    } catch (error) {
-      logger.warn('Invalid admin auth token', { message: error.message });
-      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
     }
-  }
 
-  if (req.query.userId) {
-    req.userId = req.query.userId;
+    // Fallback to query parameters
+    if (!token) {
+      token = req.query.token || req.query.authToken;
+    }
+
+    // Validate token exists and is not empty
+    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+      return res.status(401).json({ success: false, message: 'Authorization token required' });
+    }
+
+    token = token.trim();
+
+    // Verify JWT token
+    const decoded = jwt.verify(token, ADMIN_JWT_SECRET);
+
+    // Check if user has admin role
+    if (decoded.role !== 'admin') {
+      logger.warn('Admin role check failed', { userId: decoded.id });
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    // Attach user info to request
+    req.user = decoded;
+    req.userId = decoded.id;
     return next();
+  } catch (error) {
+    // Log detailed error for JWT-related issues
+    if (error.name === 'JsonWebTokenError') {
+      logger.warn('JWT validation error', { 
+        message: error.message,
+        name: error.name 
+      });
+    } else if (error.name === 'TokenExpiredError') {
+      logger.warn('JWT token expired', { expiredAt: error.expiredAt });
+    } else {
+      logger.warn('Admin auth error', { message: error.message });
+    }
+    
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid or expired token' 
+    });
   }
-
-  return res.status(401).json({ success: false, message: 'Authorization token required' });
 };
 
 module.exports = { adminLogin, adminMe, authorizeAdmin };
