@@ -29,7 +29,7 @@ const { adminLogin, authorizeAdmin } = require('../middleware/adminAuthMiddlewar
 
 const router = express.Router();
 
-router.post('/login', adminLogin);
+router.post('/auth/login', adminLogin);
 
 router.get('/dashboard/metrics', authorizeAdmin, getAdminDashboardMetrics);
 router.get('/activities', authorizeAdmin, getAdminActivities);
