@@ -41,7 +41,6 @@ app.get('/api/v1/health', (req, res) => {
 
 app.post('/api/v1/auth/login', adminLogin);
 app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1', adminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
