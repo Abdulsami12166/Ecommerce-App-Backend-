@@ -135,7 +135,7 @@ const verifyOtp = async (req, res, next) => {
     if (!email || !otpCode) {
       return sendError(res, 400, 'Email and OTP code are required');
     }
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+otpCode +otpExpiresAt');
     if (!user) {
       return sendError(res, 404, 'Account not found. Please register first.');
     }
@@ -170,7 +170,7 @@ const resendOtp = async (req, res, next) => {
     if (!email) {
       return sendError(res, 400, 'Email is required');
     }
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+otpCode +otpExpiresAt');
     if (!user) {
       return sendError(res, 404, 'Account not found.');
     }
