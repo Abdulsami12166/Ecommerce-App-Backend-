@@ -40,14 +40,14 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
-/* ── Public user-auth routes ─────────────────────────── */
+/* Public user-facing routes  →  /api/v1/auth/*, /api/v1/products, /api/v1/products/:id */
 app.use('/api/v1', userRoutes);
 
-/* ── Admin auth ──────────────────────────────────────── */
-app.post('/api/v1/admin/auth/login', adminLogin);
+/* Protected admin routes     →  /api/v1/admin/... */
+app.use('/api/v1/admin', adminRoutes);
 
-/* ── Protected admin routes ──────────────────────────── */
-app.use('/api/v1/admin', authorizeAdmin, adminRoutes);
+/* Admin-only login            →  /api/v1/admin/auth/login */
+app.post('/api/v1/admin/auth/login', adminLogin);
 
 app.use(notFound);
 app.use(errorHandler);

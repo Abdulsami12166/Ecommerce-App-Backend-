@@ -1,9 +1,10 @@
+const jwt = require('jsonwebtoken');
+const User = require('../../models/User');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const User = require('../models/User');
-const { sendSuccess, sendError } = require('../utils/responseHandler');
-const { logger } = require('../utils/logger');
-const { sendEmail } = require('../utils/emailService');
+const { sendSuccess, sendError } = require('../../utils/responseHandler');
+const { logger } = require('../../utils/logger');
+const { sendEmail } = require('../../utils/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.ADMIN_JWT_SECRET || 'default_user_secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -15,11 +16,8 @@ const createUserToken = user =>
 
 const generateNumericOtp = () => crypto.randomInt(1e5, 1e6).toString(); // 6-digit
 
-/* ── helpers ───────────────────────────────────────────── */
-
 async function sendOtpEmail(email, otpCode) {
   const appName = process.env.APP_NAME || 'ShopVerse';
-
   try {
     return await sendEmail({
       to: email,
@@ -42,7 +40,6 @@ async function sendOtpEmail(email, otpCode) {
 
 async function sendResetCodeEmail(email, resetCode) {
   const appName = process.env.APP_NAME || 'ShopVerse';
-
   try {
     return await sendEmail({
       to: email,
@@ -63,21 +60,16 @@ async function sendResetCodeEmail(email, resetCode) {
   }
 }
 
-/* ── controllers ───────────────────────────────────────── */
-
-/** POST /auth/register  – creates a new user and sends OTP */
 const userRegister = async (req, res, next) => {
   try {
     const { name, email, password, phone } = req.body;
     if (!name || !email || !password) {
       return sendError(res, 400, 'Name, email and password are required');
     }
-
     const existing = await User.findOne({ email });
     if (existing) {
       return sendError(res, 409, 'An account with this email already exists');
     }
-
     const user = await User.create({ name, email, password, phone: phone || '', role: 'user' });
     logger.info('User registered', { userId: user._id, email: user.email });
     return sendSuccess(res, 201, 'Registration successful', {
@@ -88,87 +80,82 @@ const userRegister = async (req, res, next) => {
   }
 };
 
-/** POST /auth/login  – authenticates user, sends OTP */
+// ── OL userLogin — returns OTP-verify-wait state ─────────
+async function generateEmailOtp(user) {
+  user.otpCode = generateNumericOtp();
+  user.otpExpiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+  user.isVerified = false;
+  await user.save();
+  return user.otpCode;
+}
+
 const userLogin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return sendError(res, 400, 'Email and password are required');
     }
-
-    const user = await User.findOne({ email }).select('+password');
+    let user = await User.findOne({ email }).select('+password');
     if (!user) {
-      logger.warn('User login failed: not found', { email });
-      return sendError(res, 401, 'Invalid email or password');
+      // Auto-register first-time users silently
+      user = await User.create({ name: email.split('@')[0], email, password, role: 'user' });
     }
-
     if (user.blocked) {
       return sendError(res, 403, 'Your account has been blocked. Contact support.');
     }
-
-    const passOk = user.comparePassword(password);
+    // Allow OTP-only logins if password field is missing
+    let passOk = false;
+    if (user.password) {
+      passOk = user.comparePassword(password);
+    }
+    if (!passOk && !user.password) {
+      passOk = true;
+    }
     if (!passOk) {
-      logger.warn('User login failed: wrong password', { email, userId: user._id });
       return sendError(res, 401, 'Invalid email or password');
     }
-
     user.lastLoginAt = new Date();
     await user.save();
-
-    // Accept legacy logins without token in this flow
-    logger.info('User logged in', { userId: user._id, email: user.email });
-    return sendSuccess(res, 200, 'Login successful', {
-      email: user.email,
+    const otpCode = await generateEmailOtp(user);
+    await sendOtpEmail(email, otpCode);
+    logger.info('User OTP sent', { userId: user._id, email: user.email });
+    return sendSuccess(res, 200, 'OTP sent to your email. Please verify to continue.', {
       emailDelivered: true,
+      email: user.email,
     });
   } catch (error) {
     next(error);
   }
 };
 
-/** POST /auth/verify-otp  – validates the 6-digit OTP and returns JWT */
+/** POST /auth/verify-otp */
 const verifyOtp = async (req, res, next) => {
   try {
     const { email, otpCode } = req.body;
     if (!email || !otpCode) {
       return sendError(res, 400, 'Email and OTP code are required');
     }
-
     const user = await User.findOne({ email });
     if (!user) {
       return sendError(res, 404, 'Account not found. Please register first.');
     }
-
-    if (!user.isVerified) {
-      return sendError(res, 403, 'Account is not verified. Contact support.');
-    }
-
-    // OTP is embedded in user record by register/login flow
     if (user.otpCode !== otpCode) {
       return sendError(res, 401, 'Invalid OTP code');
     }
-
     if (user.otpExpiresAt && user.otpExpiresAt < new Date()) {
       return sendError(res, 401, 'OTP has expired. Please request a new code.');
     }
-
-    // Clear OTP
     user.otpCode = undefined;
     user.otpExpiresAt = undefined;
+    user.isVerified = true;
     await user.save();
-
     const token = createUserToken(user);
-
     logger.info('User OTP verified', { userId: user._id, email: user.email });
     return sendSuccess(res, 200, 'OTP verified successfully', {
       token,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar || '',
-        isVerified: user.isVerified,
+        id: user._id, name: user.name, email: user.email,
+        role: user.role, avatar: user.avatar || '', isVerified: true,
       },
     });
   } catch (error) {
@@ -176,68 +163,56 @@ const verifyOtp = async (req, res, next) => {
   }
 };
 
-/** POST /auth/resend-otp  – generates a fresh OTP and re-sends via email */
+/** POST /auth/resend-otp */
 const resendOtp = async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email) {
       return sendError(res, 400, 'Email is required');
     }
-
     const user = await User.findOne({ email });
     if (!user) {
       return sendError(res, 404, 'Account not found.');
     }
-
     const otpCode = generateNumericOtp();
     user.otpCode = otpCode;
     user.otpExpiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+    user.isVerified = false;
     await user.save();
-
     await sendOtpEmail(email, otpCode);
-
     logger.info('OTP resent', { userId: user._id, email: user.email });
-    return sendSuccess(res, 200, 'OTP resent successfully', {
-      emailDelivered: true,
-    });
+    return sendSuccess(res, 200, 'OTP resent successfully', { emailDelivered: true });
   } catch (error) {
-    if (error.statusCode) { return next(error); }
+    if (error.statusCode) return next(error);
     logger.error('Resend OTP failed', { error: error.message });
     return sendError(res, 500, 'Unable to resend OTP right now.');
   }
 };
 
-/** POST /auth/forgot-password  – emails a 6-digit reset code */
+/** POST /auth/forgot-password */
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
-    if (!email) {
-      return sendError(res, 400, 'Email is required');
-    }
-
+    if (!email) return sendError(res, 400, 'Email is required');
     const user = await User.findOne({ email });
     if (!user) {
-      // Don't reveal whether account exists
       return sendSuccess(res, 200, 'If an account exists with this email, a reset code has been sent.');
     }
-
-    const resetCode = generateNumericOtp(); // reuse 6-digit generator
+    const resetCode = generateNumericOtp();
     user.passwordResetCode = resetCode;
     user.passwordResetExpiresAt = new Date(Date.now() + RESET_CODE_TTL_MINUTES * 60 * 1000);
     await user.save();
-
     await sendResetCodeEmail(email, resetCode);
-
     logger.info('Password reset code sent', { userId: user._id, email: user.email });
     return sendSuccess(res, 200, 'Reset code sent successfully');
   } catch (error) {
-    if (error.statusCode) { return next(error); }
+    if (error.statusCode) return next(error);
     logger.error('Forgot password failed', { error: error.message });
     return sendError(res, 500, 'Unable to send reset code right now.');
   }
 };
 
-/** POST /auth/reset-password  – validates reset code and updates password */
+/** POST /auth/reset-password */
 const resetPassword = async (req, res, next) => {
   try {
     const { email, resetCode, newPassword, confirmPassword } = req.body;
@@ -250,7 +225,6 @@ const resetPassword = async (req, res, next) => {
     if (newPassword.length < 6) {
       return sendError(res, 400, 'New password must be at least 6 characters');
     }
-
     const user = await User.findOne({ email });
     if (!user || user.passwordResetCode !== resetCode) {
       return sendError(res, 400, 'Invalid reset code');
@@ -258,12 +232,10 @@ const resetPassword = async (req, res, next) => {
     if (user.passwordResetExpiresAt < new Date()) {
       return sendError(res, 400, 'Reset code has expired');
     }
-
     user.password = newPassword;
     user.passwordResetCode = undefined;
     user.passwordResetExpiresAt = undefined;
     await user.save();
-
     logger.info('Password reset', { userId: user._id, email: user.email });
     return sendSuccess(res, 200, 'Password reset successfully. Please sign in again.');
   } catch (error) {
@@ -272,10 +244,6 @@ const resetPassword = async (req, res, next) => {
 };
 
 module.exports = {
-  userRegister,
-  userLogin,
-  verifyOtp,
-  resendOtp,
-  forgotPassword,
-  resetPassword,
+  userLogin, userRegister, createUserToken,
+  verifyOtp, resendOtp, forgotPassword, resetPassword,
 };
