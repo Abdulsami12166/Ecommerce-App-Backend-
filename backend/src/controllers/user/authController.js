@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { sendSuccess, sendError } = require('../utils/responseHandler');
-const { logger } = require('../utils/logger');
+const User = require('../../models/User');
+const { sendSuccess, sendError } = require('../../utils/responseHandler');
+const { logger } = require('../../utils/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.ADMIN_JWT_SECRET || 'default_user_secret';
 
