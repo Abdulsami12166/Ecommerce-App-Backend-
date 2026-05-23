@@ -2,8 +2,7 @@ const { logger } = require('./logger');
 
 /**
  * Send an email via Resend (primary) with nodemailer (fallback).
- *
- * Accepted options: { to, subject, html, text? }
+ * Supports both Resend SDK v6+  and legacy versions.
  */
 async function sendEmail({ to, subject, html, text }) {
   const from = process.env.EMAIL_FROM;
@@ -18,18 +17,34 @@ async function sendEmail({ to, subject, html, text }) {
   // ── Primary: Resend ──────────────────────────────────
   if (resendKey) {
     try {
-      const resend = require('resend');
-      const { data } = await resend.Emails.send({
+      let resendLib = require('resend');
+
+      // SDK v6+: default export is a factory function / class
+      // ── v6+ API: new Resend(key).emails.send(...)
+      let resendClient;
+      if (typeof resendLib === 'function') {
+        resendClient = new resendLib(resendKey);
+      } else if (resendLib.Resend) {
+        resendClient = new resendLib.Resend(resendKey);
+      } else if (resendLib.default && typeof resendLib.default === 'function') {
+        resendClient = new resendLib.default(resendKey);
+      } else {
+        throw new Error('Unrecognised Resend SDK shape');
+      }
+
+      const result = await resendClient.emails.send({
         from,
         to,
         subject,
         html,
         text: text || html?.replace(/<[^>]+>/g, ' '),
       });
-      logger.info('Email sent via Resend', { to, subject, resendId: data?.id });
-      return data;
+
+      const resendId = result?.data?.id || 'unknown';
+      logger.info('Email sent via Resend', { to, subject, resendId });
+      return result.data;
     } catch (err) {
-      logger.warn('Resend failed, falling back to nodemailer', { error: err.message });
+      logger.warn('Resend failed — trying next attempt: %s', err.message);
     }
   }
 
