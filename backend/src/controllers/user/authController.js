@@ -30,9 +30,51 @@ const userLogin = async (req, res, next) => {
 
     await user.save();
 
-    // Send email OTP via SMTP (Gmail or other provider)
-    const { sendOtpEmail } = require('../../services/emailService');
+    // Send email OTP via email service
+    // Some deployments may end up with different bundle layouts, so attempt both known paths.
+    let sendOtpEmail;
+    const requireEmailService = () => {
+      // eslint-disable-next-line global-require
+      const svc = require('../../services/emailService');
+      if (typeof svc?.sendOtpEmail !== 'function') {
+        throw new Error('emailService.sendOtpEmail is not a function');
+      }
+      return svc.sendOtpEmail;
+    };
+
+    const requireUtilsEmailService = () => {
+      // eslint-disable-next-line global-require
+      const utilSvc = require('../../utils/emailService');
+      if (typeof utilSvc?.sendEmail !== 'function') {
+        throw new Error('utils.emailService.sendEmail is not a function');
+      }
+
+      // Adapter: utils/emailService exports sendEmail({to, subject, html, text}), not sendOtpEmail.
+      return async ({ toEmail, otpCode }) => {
+        const subject = 'Your OTP Code';
+        const text = `Your OTP code is: ${otpCode}. It will expire in 5 minutes.`;
+        const html = `<div style="font-family: Arial, sans-serif;"><h3>Your OTP Code</h3><p>Your OTP code is: <b>${otpCode}</b></p><p>It will expire in 5 minutes.</p></div>`;
+        await utilSvc.sendEmail({ to: toEmail, subject, text, html });
+      };
+    };
+
+    try {
+      sendOtpEmail = requireEmailService();
+    } catch (e1) {
+      try {
+        // If the primary email service module cannot even be required (e.g., missing env keys at import time),
+        // fall back to the alternate implementation.
+        sendOtpEmail = requireUtilsEmailService();
+      } catch (e2) {
+        e2.message = `Failed to load email service from both paths: services/emailService (${e1.message}) and utils/emailService (${e2.message})`;
+        throw e2;
+      }
+    }
+
     await sendOtpEmail({ toEmail: user.email, otpCode });
+
+
+
 
     logger.info('User OTP email sent', {
       userId: user._id,
