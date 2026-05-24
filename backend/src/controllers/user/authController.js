@@ -8,7 +8,7 @@ const createUserToken = (user) => {
   return `user-${user._id}-${Date.now()}`;
 };
 
-// LOGIN
+// LOGIN -> send OTP email (do NOT return OTP)
 const userLogin = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -23,26 +23,27 @@ const userLogin = async (req, res, next) => {
       return sendError(res, 404, 'User not found');
     }
 
-    // SIMPLE OTP FOR TESTING
-    user.otpCode = '123456';
+    // Generate OTP (5 min expiry)
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    user.otpCode = otpCode;
     user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     await user.save();
 
-    logger.info('User OTP sent', {
+    // Send email OTP via SMTP (Gmail or other provider)
+    const { sendOtpEmail } = require('../../services/emailService');
+    await sendOtpEmail({ toEmail: user.email, otpCode });
+
+    logger.info('User OTP email sent', {
       userId: user._id,
       email: user.email,
     });
 
-    return sendSuccess(
-      res,
-      200,
-      'OTP sent successfully',
-      {
-        email: user.email,
-        otp: '123456',
-      },
-    );
+    // Never return OTP in API response
+    return sendSuccess(res, 200, 'OTP sent successfully', {
+      email: user.email,
+      emailDelivered: true,
+    });
   } catch (error) {
     next(error);
   }
@@ -57,8 +58,7 @@ const verifyOtp = async (req, res, next) => {
       return sendError(res, 400, 'Email and OTP code are required');
     }
 
-    const user = await User.findOne({ email })
-      .select('+otpCode +otpExpiresAt');
+    const user = await User.findOne({ email }).select('+otpCode +otpExpiresAt');
 
     if (!user) {
       return sendError(
@@ -68,19 +68,12 @@ const verifyOtp = async (req, res, next) => {
       );
     }
 
-    if (user.otpCode !== otpCode) {
+    if (String(user.otpCode) !== String(otpCode)) {
       return sendError(res, 401, 'Invalid OTP code');
     }
 
-    if (
-      user.otpExpiresAt &&
-      user.otpExpiresAt < new Date()
-    ) {
-      return sendError(
-        res,
-        401,
-        'OTP has expired. Please request a new code.',
-      );
+    if (user.otpExpiresAt && user.otpExpiresAt < new Date()) {
+      return sendError(res, 401, 'OTP has expired. Please request a new code.');
     }
 
     // CLEAR OTP
@@ -122,22 +115,17 @@ const verifyOtp = async (req, res, next) => {
       email: user.email,
     });
 
-    return sendSuccess(
-      res,
-      200,
-      'OTP verified successfully',
-      {
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          avatar: user.avatar || '',
-          isVerified: true,
-        },
+    return sendSuccess(res, 200, 'OTP verified successfully', {
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar || '',
+        isVerified: true,
       },
-    );
+    });
   } catch (error) {
     next(error);
   }
@@ -147,3 +135,4 @@ module.exports = {
   userLogin,
   verifyOtp,
 };
+
