@@ -34,14 +34,17 @@ const verifyOtp = async (req, res, next) => {
       );
     }
 
+    // CLEAR OTP
     user.otpCode = undefined;
     user.otpExpiresAt = undefined;
+
+    // UPDATE USER
     user.isVerified = true;
     user.lastLoginAt = new Date();
 
     await user.save();
 
-    // SAVE USER ACTIVITY
+    // SAVE USER LOGIN ACTIVITY
     await UserActivity.create({
       user: user._id,
       action: 'login',
@@ -50,7 +53,7 @@ const verifyOtp = async (req, res, next) => {
       userAgent: req.headers['user-agent'],
     });
 
-    // REALTIME EVENT
+    // REALTIME ADMIN EVENT
     const emitAdminEvent = req.app.get('emitAdminEvent');
 
     if (emitAdminEvent) {
@@ -62,7 +65,7 @@ const verifyOtp = async (req, res, next) => {
       });
     }
 
-    // CREATE JWT TOKEN
+    // GENERATE TOKEN
     const token = createUserToken(user);
 
     logger.info('User OTP verified', {
@@ -89,4 +92,9 @@ const verifyOtp = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+module.exports = {
+  userLogin,
+  verifyOtp,
 };
