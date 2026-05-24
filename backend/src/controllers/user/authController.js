@@ -71,10 +71,26 @@ const userLogin = async (req, res, next) => {
       }
     }
 
-    await sendOtpEmail({ toEmail: user.email, otpCode });
-
-
-
+    try {
+      await sendOtpEmail({ toEmail: user.email, otpCode });
+    } catch (emailErr) {
+      // If Resend sender config is missing, try the alternate implementation (nodemailer-backed).
+      const msg = String(emailErr?.message || emailErr);
+      if (msg.includes('Missing email sender') || msg.toLowerCase().includes('email sender')) {
+        logger.warn('Resend OTP failed due to missing sender config; falling back to utils/emailService', {
+          userId: user._id,
+          email: user.email,
+          reason: msg,
+        });
+        const fallbackSend = require('../../utils/emailService').sendEmail;
+        const subject = 'Your OTP Code';
+        const text = `Your OTP code is: ${otpCode}. It will expire in 5 minutes.`;
+        const html = `<div style="font-family: Arial, sans-serif;"><h3>Your OTP Code</h3><p>Your OTP code is: <b>${otpCode}</b></p><p>It will expire in 5 minutes.</p></div>`;
+        await fallbackSend({ to: user.email, subject, text, html });
+      } else {
+        throw emailErr;
+      }
+    }
 
     logger.info('User OTP email sent', {
       userId: user._id,
