@@ -95,6 +95,5 @@ const verifyOtp = async (req, res, next) => {
 };
 
 module.exports = {
-  userLogin,
   verifyOtp,
 };

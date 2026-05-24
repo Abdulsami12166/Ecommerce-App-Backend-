@@ -13,7 +13,7 @@ const {
 const router = express.Router();
 
 // AUTH ROUTES
-router.post('/auth/login', userLogin);
+//router.post('/auth/login', userLogin);
 router.post('/auth/verify-otp', verifyOtp);
 
 // PRODUCT ROUTES
