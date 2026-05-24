@@ -5,9 +5,18 @@ const {
   getProductById,
 } = require('../controllers/user/productController');
 
+const {
+  userLogin,
+  verifyOtp,
+} = require('../controllers/user/authController');
+
 const router = express.Router();
 
-// PRODUCTS ONLY
+// AUTH ROUTES
+router.post('/auth/login', userLogin);
+router.post('/auth/verify-otp', verifyOtp);
+
+// PRODUCT ROUTES
 router.get('/products', getProducts);
 router.get('/products/:id', getProductById);
 
