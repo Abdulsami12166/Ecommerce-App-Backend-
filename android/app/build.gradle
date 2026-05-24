@@ -9,37 +9,6 @@ react {
 
     debuggableVariants = []
 
-    def jsEntryFile
-
-    if (project.hasProperty('entryFile')) {
-
-        jsEntryFile = project.entryFile
-
-    } else {
-
-        def taskNames = gradle.startParameter.taskNames.join(' ').toLowerCase()
-
-        if (
-            taskNames.contains('admindebug') ||
-            taskNames.contains('installadmindebug') ||
-            taskNames.contains('bundleadmindebugjsandassets') ||
-            taskNames.contains('assembleadmindebug')
-        ) {
-
-            jsEntryFile = "admin-app/index.js"
-
-        } else {
-
-            jsEntryFile = "index.js"
-        }
-    }
-
-    if (!jsEntryFile.startsWith('/') && !jsEntryFile.startsWith('../../')) {
-        jsEntryFile = "../../" + jsEntryFile
-    }
-
-    entryFile = file(jsEntryFile)
-
     autolinkLibrariesWithApp()
 }
 
@@ -72,37 +41,6 @@ android {
         versionName "1.0"
 
         multiDexEnabled true
-    }
-
-    flavorDimensions "app"
-
-    productFlavors {
-
-        ecommerce {
-
-            dimension "app"
-
-            applicationId "com.ecommerce"
-
-            manifestPlaceholders = [
-                appLabel: "Ecommerce"
-            ]
-
-            resValue "string", "app_name", "Ecommerce"
-        }
-
-        admin {
-
-            dimension "app"
-
-            applicationId "com.ecommerce.admin"
-
-            manifestPlaceholders = [
-                appLabel: "Ecommerce Admin"
-            ]
-
-            resValue "string", "app_name", "Ecommerce Admin"
-        }
     }
 
     packagingOptions {

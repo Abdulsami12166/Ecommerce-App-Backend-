@@ -105,13 +105,6 @@ const Login = ({ navigation }) => {
             style={styles.button}
           />
 
-          <TouchableOpacity
-            style={styles.adminAction}
-            onPress={() => navigation.navigate('AdminLogin')}
-          >
-            <Text style={styles.adminActionText}>Open Admin Login</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <Text style={styles.link}>Create Account</Text>
                   </TouchableOpacity>
@@ -193,14 +186,6 @@ const styles = StyleSheet.create({
   },
   button: {
     marginBottom: spacing.md,
-  },
-  adminAction: {
-    marginBottom: spacing.md,
-    alignSelf: 'center',
-  },
-  adminActionText: {
-    color: colors.primarySoft,
-    fontWeight: '800',
   },
   link: {
     textAlign: 'center',

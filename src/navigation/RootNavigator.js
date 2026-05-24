@@ -5,13 +5,6 @@ import Login from '../screens/auth/Login'
 import ForgotPassword from '../screens/auth/ForgotPassword'
    import OTP from '../screens/auth/OTP'
   import Register from '../screens/auth/Register'
-// Admin screens disabled in main ecommerce app (use separate admin-app instead)
-import AdminLoginScreen from '../screens/admin/AdminLoginScreen'
-
-// Admin screens (embedded into main ecommerce app)
-import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen'
-
-
 
 import CartScreen from '../screens/cart/CartScreen'
 
@@ -91,8 +84,6 @@ const Stack = createNativeStackNavigator()
    <Stack.Screen name="Login" component={Login} />
 <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
 <Stack.Screen name="Register" component={Register} />
-<Stack.Screen name="AdminLogin" component={AdminLoginScreen} />
-<Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
 
 
 

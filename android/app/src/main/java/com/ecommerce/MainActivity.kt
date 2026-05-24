@@ -9,7 +9,7 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 class MainActivity : ReactActivity() {
 
   override fun getMainComponentName(): String {
-    return "AdminApp"
+    return "Ecommerce"
   }
 
   override fun createReactActivityDelegate(): ReactActivityDelegate {

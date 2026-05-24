@@ -444,13 +444,6 @@ const ProfileScreen = ({ navigation }) => {
           style={styles.shoppingButton}
         />
 
-        <CustomButton
-          title="Admin Login"
-          variant="secondary"
-          onPress={() => navigation.navigate('AdminLogin')}
-          style={styles.adminButton}
-        />
-
         <BottomNav active="Profile" navigation={navigation} />
       </ScrollView>
     </SafeAreaView>
@@ -625,9 +618,6 @@ const createStyles = colors => StyleSheet.create({
   },
   shoppingButton: {
     marginTop: spacing.xl,
-  },
-  adminButton: {
-    marginTop: spacing.md,
   },
 });
 

@@ -8,9 +8,6 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "start:admin": "npx react-native start --config metro.admin.config.js --port 8084",
-    "android:admin": "cd android && gradlew.bat installAdminDebug -PentryFile=admin-app/index.js",
-    "ios:admin": "echo \"iOS admin target is not configured. Create an Xcode admin target before using this script.\"",
     "test": "jest"
   },
   "dependencies": {
