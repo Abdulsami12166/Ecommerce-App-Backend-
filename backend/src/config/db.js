@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { logger } = require('../utils/logger');
+
+const { logger } = require('../shared/utils/logger');
 
 const connectDB = async () => {
   const mongoUri = process.env.MONGO_URI;
@@ -8,7 +9,7 @@ const connectDB = async () => {
   }
 
   await mongoose.connect(mongoUri);
-  logger.info('MongoDB connected (admin server)', {
+  logger.info('MongoDB connected', {
     host: mongoose.connection.host,
     database: mongoose.connection.name,
   });

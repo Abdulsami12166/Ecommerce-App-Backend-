@@ -1,24 +1,15 @@
 const express = require('express');
 
-const {
-  getProducts,
-  getProductById,
-} = require('../controllers/user/productController');
-
-const {
-  userLogin,
-  verifyOtp,
-} = require('../controllers/user/authController');
+const authRoutes = require('../modules/auth/auth.routes');
+const productsRoutes = require('../modules/products/products.routes');
+const usersRoutes = require('../modules/users/users.routes');
+const ordersRoutes = require('../modules/orders/orders.routes');
 
 const router = express.Router();
 
-// AUTH
-router.post('/auth/login', userLogin);
-router.post('/auth/verify-otp', verifyOtp);
-
-// PRODUCTS
-router.get('/products', getProducts);
-router.get('/products/:id', getProductById);
+router.use('/auth', authRoutes);
+router.use('/products', productsRoutes);
+router.use('/users', usersRoutes);
+router.use('/orders', ordersRoutes);
 
 module.exports = router;
-

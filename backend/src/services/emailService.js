@@ -1,7 +1,5 @@
 const { Resend } = require('resend');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // Optional env vars:
 // - RESEND_FROM (sender email). If not provided, falls back to SMTP_FROM-like var.
 // - RESEND_FROM_NAME
@@ -17,6 +15,9 @@ const getFromEmail = () => {
 const sendOtpEmail = async ({ toEmail, otpCode }) => {
   if (!toEmail) throw new Error('Missing toEmail');
   if (!otpCode) throw new Error('Missing otpCode');
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Missing API key. Set RESEND_API_KEY to send OTP email with Resend.');
+  }
 
   const from = getFromEmail();
   if (!from) {
@@ -25,6 +26,7 @@ const sendOtpEmail = async ({ toEmail, otpCode }) => {
     );
   }
 
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const result = await resend.emails.send({
     from:
       process.env.RESEND_FROM_NAME && process.env.RESEND_FROM_NAME.trim()

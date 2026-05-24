@@ -1,11 +1,12 @@
 {
-  "name": "ecommerce-admin-backend",
+  "name": "ecommerce-backend",
   "version": "1.0.0",
   "private": true,
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "seed:admin": "node scripts/seedAdmin.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -21,8 +22,7 @@
     "nodemailer": "^6.10.1",
     "razorpay": "^2.9.6",
     "resend": "^6.12.3",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.3"
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
