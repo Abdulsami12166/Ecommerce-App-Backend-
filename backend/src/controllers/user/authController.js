@@ -1,5 +1,54 @@
+const User = require('../../models/User');
 const UserActivity = require('../../models/UserActivity');
 
+const { sendSuccess, sendError } = require('../../utils/responseHandler');
+const { logger } = require('../../utils/logger');
+
+const createUserToken = (user) => {
+  return `user-${user._id}-${Date.now()}`;
+};
+
+// LOGIN
+const userLogin = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return sendError(res, 400, 'Email is required');
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return sendError(res, 404, 'User not found');
+    }
+
+    // SIMPLE OTP FOR TESTING
+    user.otpCode = '123456';
+    user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await user.save();
+
+    logger.info('User OTP sent', {
+      userId: user._id,
+      email: user.email,
+    });
+
+    return sendSuccess(
+      res,
+      200,
+      'OTP sent successfully',
+      {
+        email: user.email,
+        otp: '123456',
+      },
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// VERIFY OTP
 const verifyOtp = async (req, res, next) => {
   try {
     const { email, otpCode } = req.body;
@@ -44,7 +93,7 @@ const verifyOtp = async (req, res, next) => {
 
     await user.save();
 
-    // SAVE USER LOGIN ACTIVITY
+    // SAVE LOGIN ACTIVITY
     await UserActivity.create({
       user: user._id,
       action: 'login',
@@ -65,7 +114,7 @@ const verifyOtp = async (req, res, next) => {
       });
     }
 
-    // GENERATE TOKEN
+    // TOKEN
     const token = createUserToken(user);
 
     logger.info('User OTP verified', {
@@ -95,5 +144,6 @@ const verifyOtp = async (req, res, next) => {
 };
 
 module.exports = {
+  userLogin,
   verifyOtp,
 };

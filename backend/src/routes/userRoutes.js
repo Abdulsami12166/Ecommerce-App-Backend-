@@ -12,11 +12,11 @@ const {
 
 const router = express.Router();
 
-// AUTH ROUTES
-//router.post('/auth/login', userLogin);
+// AUTH
+router.post('/auth/login', userLogin);
 router.post('/auth/verify-otp', verifyOtp);
 
-// PRODUCT ROUTES
+// PRODUCTS
 router.get('/products', getProducts);
 router.get('/products/:id', getProductById);
 
