@@ -5,6 +5,8 @@ Unified backend for:
 - admin app APIs
 - realtime Socket.IO events
 
+The old separate admin backend has been merged here. Deploy only this service.
+
 ## Run locally
 ```powershell
 copy .env.example .env
