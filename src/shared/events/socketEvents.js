@@ -9,6 +9,7 @@ const socketEvents = {
     USER_LOGGED_OUT: 'auth.user.logged_out',
     ORDER_CREATED: 'order.created',
     ORDER_UPDATED: 'order.updated',
+    PRODUCT_CREATED: 'product.created',
     ADMIN_ACTIVITY_CREATED: 'admin.activity.created',
     ADMIN_FORCE_LOGOUT: 'admin.user.force_logout',
   },

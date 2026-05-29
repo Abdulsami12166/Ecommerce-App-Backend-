@@ -109,6 +109,12 @@ const emitToAdmins = (app, event, payload) => {
   io.to(socketEvents.ROOMS.ADMINS).emit(event, payload);
 };
 
+const emitToAll = (app, event, payload) => {
+  const io = getIo(app);
+  if (!io) return;
+  io.emit(event, payload);
+};
+
 const emitToUser = (app, userId, event, payload) => {
   const io = getIo(app);
   if (!io || !userId) return;
@@ -117,6 +123,7 @@ const emitToUser = (app, userId, event, payload) => {
 
 module.exports = {
   attachSocketServer,
+  emitToAll,
   emitToAdmins,
   emitToUser,
 };

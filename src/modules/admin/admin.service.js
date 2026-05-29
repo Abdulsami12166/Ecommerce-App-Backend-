@@ -1,7 +1,14 @@
 const { adminRepository } = require('./admin.repository');
 const { AppError } = require('../../shared/utils/appError');
-const { emitToAdmins, emitToUser } = require('../../shared/events/eventBus');
+const { emitToAdmins, emitToAll, emitToUser } = require('../../shared/events/eventBus');
 const { socketEvents } = require('../../shared/events/socketEvents');
+
+const slugify = value =>
+  String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
 const getDashboardMetrics = async () => {
   const now = new Date();
@@ -140,7 +147,55 @@ const forceLogoutUser = async (userId, app) => {
 
 const getProducts = async () => ({ products: await adminRepository.getProducts() });
 
-const createProduct = async payload => ({ product: await adminRepository.createProduct(payload) });
+const createProduct = async (payload, adminUserId, app) => {
+  if (!payload?.title?.trim()) {
+    throw new AppError('Product title is required', 400);
+  }
+
+  if (!payload?.description?.trim()) {
+    throw new AppError('Product description is required', 400);
+  }
+
+  if (!payload?.category?.trim()) {
+    throw new AppError('Product category is required', 400);
+  }
+
+  const baseSlug = slugify(payload.slug || payload.title);
+  const nextPayload = {
+    ...payload,
+    slug: `${baseSlug || 'product'}-${Date.now()}`,
+    seller: payload.seller || adminUserId,
+    images: Array.isArray(payload.images)
+      ? payload.images.filter(Boolean)
+      : payload.image
+        ? [payload.image]
+        : [],
+    isPublished: payload.isPublished ?? true,
+  };
+
+  const product = await adminRepository.createProduct(nextPayload);
+  await adminRepository.createActivity({
+    user: adminUserId,
+    action: 'product',
+    details: `${product.title} was published by admin`,
+  });
+
+  const eventPayload = {
+    productId: String(product._id),
+    title: product.title,
+    description: product.description,
+    image: product.images?.[0] || '',
+    category: product.category,
+    price: product.price,
+    discountedPrice: product.discountedPrice,
+    stock: product.stock,
+  };
+
+  emitToAdmins(app, socketEvents.DOMAIN.PRODUCT_CREATED, eventPayload);
+  emitToAll(app, socketEvents.DOMAIN.PRODUCT_CREATED, eventPayload);
+
+  return { product };
+};
 
 const updateProduct = async (productId, payload) => {
   const product = await adminRepository.getProductById(productId);
