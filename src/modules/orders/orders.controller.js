@@ -28,4 +28,22 @@ const createOrder = async (req, res, next) => {
   }
 };
 
-module.exports = { getOrders, getOrderById, createOrder };
+const createPaymentOrder = async (req, res, next) => {
+  try {
+    const data = await ordersService.createPaymentOrderForUser(req.userId, req.body);
+    return sendSuccess(res, 201, 'Payment order created successfully', data);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const verifyPayment = async (req, res, next) => {
+  try {
+    const data = await ordersService.verifyPaymentForUser(req.userId, req.body);
+    return sendSuccess(res, 200, 'Payment verified successfully', data);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+module.exports = { getOrders, getOrderById, createOrder, createPaymentOrder, verifyPayment };

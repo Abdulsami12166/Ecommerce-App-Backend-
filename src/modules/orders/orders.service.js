@@ -3,6 +3,38 @@ const { authRepository } = require('../auth/auth.repository');
 const { AppError } = require('../../shared/utils/appError');
 const { emitToAdmins, emitToUser } = require('../../shared/events/eventBus');
 const { socketEvents } = require('../../shared/events/socketEvents');
+const crypto = require('crypto');
+const Razorpay = require('razorpay');
+
+const getRazorpayClient = () => {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    throw new AppError('Razorpay is not configured on the server', 500);
+  }
+
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+};
+
+const verifyRazorpaySignature = ({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
+  if (!process.env.RAZORPAY_KEY_SECRET) {
+    throw new AppError('Razorpay is not configured on the server', 500);
+  }
+
+  if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+    throw new AppError('Razorpay payment verification details are required', 400);
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+    .digest('hex');
+
+  if (expectedSignature !== razorpaySignature) {
+    throw new AppError('Payment verification failed', 400);
+  }
+};
 
 const createOrderPayload = (currentUser, payload) => {
   const items = Array.isArray(payload.items) ? payload.items : [];
@@ -36,6 +68,11 @@ const createOrderPayload = (currentUser, payload) => {
     paymentStatus: payload.paymentStatus || 'pending',
     paymentMethod: payload.paymentMethod || 'card',
     paymentReference: payload.paymentReference || '',
+    razorpayOrderId: payload.razorpayOrderId || '',
+    razorpayPaymentId: payload.razorpayPaymentId || '',
+    razorpaySignature: payload.razorpaySignature || '',
+    transactionStatus: payload.transactionStatus || (payload.paymentStatus === 'paid' ? 'paid' : 'pending'),
+    transactionVerifiedAt: payload.transactionVerifiedAt || (payload.paymentStatus === 'paid' ? new Date() : null),
   };
 };
 
@@ -52,6 +89,10 @@ const getOrderForUser = async (userId, orderId) => {
 const createOrderForUser = async (userId, payload, app) => {
   const currentUser = await authRepository.findUserById(userId);
   if (!currentUser) throw new AppError('User not found', 404);
+
+  if (payload.paymentStatus === 'paid') {
+    verifyRazorpaySignature(payload);
+  }
 
   const order = await ordersRepository.createOrder(createOrderPayload(currentUser, payload));
 
@@ -78,8 +119,66 @@ const createOrderForUser = async (userId, payload, app) => {
   return { order: populatedOrder };
 };
 
+const createPaymentOrderForUser = async (userId, payload) => {
+  const currentUser = await authRepository.findUserById(userId);
+  if (!currentUser) throw new AppError('User not found', 404);
+
+  const orderPayload = createOrderPayload(currentUser, payload);
+  const amountInPaise = Math.round(orderPayload.totalAmount * 100);
+  if (amountInPaise <= 0) {
+    throw new AppError('Payment amount must be greater than zero', 400);
+  }
+
+  const razorpayOrder = await getRazorpayClient().orders.create({
+    amount: amountInPaise,
+    currency: 'INR',
+    receipt: `cart_${Date.now()}`,
+    notes: {
+      userId: String(currentUser._id),
+      email: currentUser.email,
+    },
+  });
+
+  return {
+    keyId: process.env.RAZORPAY_KEY_ID,
+    razorpayOrder,
+    amount: orderPayload.totalAmount,
+    currency: 'INR',
+  };
+};
+
+const verifyPaymentForUser = async (userId, payload) => {
+  const {
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+  } = payload || {};
+
+  verifyRazorpaySignature({ razorpayOrderId, razorpayPaymentId, razorpaySignature });
+
+  const existingOrder = await ordersRepository.findOrderByRazorpayOrderId(razorpayOrderId);
+  if (existingOrder && String(existingOrder.user?._id || existingOrder.user) !== String(userId)) {
+    throw new AppError('Payment reference already belongs to another user', 403);
+  }
+
+  return {
+    verified: true,
+    payment: {
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      paymentReference: razorpayPaymentId,
+      paymentStatus: 'paid',
+      transactionStatus: 'paid',
+      transactionVerifiedAt: new Date(),
+    },
+  };
+};
+
 module.exports = {
   getOrdersForUser,
   getOrderForUser,
   createOrderForUser,
+  createPaymentOrderForUser,
+  verifyPaymentForUser,
 };

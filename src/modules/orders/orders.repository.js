@@ -6,6 +6,8 @@ const ordersRepository = {
     Order.find({ user: userId }).sort({ createdAt: -1 }).populate('user', 'name email phone role blocked'),
   findOrderById: orderId =>
     Order.findById(orderId).populate('user', 'name email phone role blocked'),
+  findOrderByRazorpayOrderId: razorpayOrderId =>
+    Order.findOne({ razorpayOrderId }).populate('user', 'name email phone role blocked'),
   saveOrder: order => order.save(),
 };
 
