@@ -5,6 +5,13 @@ const { AppError } = require('../utils/appError');
 
 const USER_JWT_SECRET = process.env.JWT_SECRET || process.env.ADMIN_JWT_SECRET || 'default_user_secret';
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'default_admin_secret';
+const ADMIN_ROLES = new Set(['admin', 'super-admin', 'product-manager', 'support']);
+
+const normalizeRole = role =>
+  String(role || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
 
 const extractBearerToken = req => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
@@ -62,7 +69,7 @@ const requireAdminAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, ADMIN_JWT_SECRET);
     await attachUserFromToken(req, decoded);
 
-    if (req.user.role !== 'admin') {
+    if (!ADMIN_ROLES.has(normalizeRole(req.user.role))) {
       throw new AppError('Admin access required', 403);
     }
 
@@ -76,6 +83,7 @@ module.exports = {
   USER_JWT_SECRET,
   ADMIN_JWT_SECRET,
   extractBearerToken,
+  normalizeRole,
   requireUserAuth,
   requireAdminAuth,
 };

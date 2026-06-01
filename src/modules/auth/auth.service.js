@@ -5,7 +5,7 @@ const { authRepository } = require('./auth.repository');
 const { logger } = require('../../shared/utils/logger');
 const { AppError } = require('../../shared/utils/appError');
 const { sendEmail } = require('../../utils/emailService');
-const { USER_JWT_SECRET, ADMIN_JWT_SECRET } = require('../../shared/middleware/auth');
+const { USER_JWT_SECRET, ADMIN_JWT_SECRET, normalizeRole } = require('../../shared/middleware/auth');
 const { emitToAdmins } = require('../../shared/events/eventBus');
 const { socketEvents } = require('../../shared/events/socketEvents');
 
@@ -41,6 +41,7 @@ const createAdminToken = user =>
     ADMIN_JWT_SECRET,
     { expiresIn: '1d' },
   );
+const ADMIN_ROLES = new Set(['admin', 'super-admin', 'product-manager', 'support']);
 
 const sendOtpMessage = async (email, otpCode) => {
   try {
@@ -284,7 +285,7 @@ const loginAdmin = async payload => {
   }
 
   const user = await authRepository.findUserByEmailWithPassword(email);
-  if (!user || user.role !== 'admin') {
+  if (!user || !ADMIN_ROLES.has(normalizeRole(user.role))) {
     throw new AppError('Invalid admin credentials', 401);
   }
 
