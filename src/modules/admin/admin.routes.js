@@ -1,30 +1,30 @@
 const express = require('express');
 
 const adminController = require('./admin.controller');
-const { requireAdminAuth } = require('../../shared/middleware/auth');
+const { requireAdminAuth, requireAdminRole } = require('../../shared/middleware/auth');
 
 const router = express.Router();
 
 router.post('/auth/login', adminController.loginAdmin);
 
 router.get('/dashboard/metrics', requireAdminAuth, adminController.getDashboardMetrics);
-router.get('/activities', requireAdminAuth, adminController.getActivities);
+router.get('/activities', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getActivities);
 
-router.get('/users', requireAdminAuth, adminController.getUsers);
-router.get('/users/:id/orders', requireAdminAuth, adminController.getUserOrders);
-router.delete('/users/:id', requireAdminAuth, adminController.deleteUser);
-router.post('/users/:id/block', requireAdminAuth, adminController.blockUser);
-router.post('/users/:id/unblock', requireAdminAuth, adminController.unblockUser);
-router.post('/users/:id/logout', requireAdminAuth, adminController.forceLogoutUser);
+router.get('/users', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getUsers);
+router.get('/users/:id/orders', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getUserOrders);
+router.delete('/users/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.deleteUser);
+router.post('/users/:id/block', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.blockUser);
+router.post('/users/:id/unblock', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.unblockUser);
+router.post('/users/:id/logout', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.forceLogoutUser);
 
-router.get('/products', requireAdminAuth, adminController.getProducts);
-router.post('/products', requireAdminAuth, adminController.createProduct);
-router.put('/products/:id', requireAdminAuth, adminController.updateProduct);
-router.delete('/products/:id', requireAdminAuth, adminController.deleteProduct);
+router.get('/products', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.getProducts);
+router.post('/products', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.createProduct);
+router.put('/products/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.updateProduct);
+router.delete('/products/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.deleteProduct);
 
-router.get('/orders', requireAdminAuth, adminController.getOrders);
-router.post('/orders', requireAdminAuth, adminController.createOrder);
-router.patch('/orders/:id/status', requireAdminAuth, adminController.updateOrderStatus);
-router.delete('/orders/:id', requireAdminAuth, adminController.deleteOrder);
+router.get('/orders', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager', 'support'), adminController.getOrders);
+router.post('/orders', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.createOrder);
+router.patch('/orders/:id/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.updateOrderStatus);
+router.delete('/orders/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.deleteOrder);
 
 module.exports = router;
