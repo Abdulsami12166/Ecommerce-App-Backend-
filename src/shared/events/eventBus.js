@@ -5,6 +5,7 @@ const User = require('../../models/User');
 const { logger } = require('../utils/logger');
 const { socketEvents } = require('./socketEvents');
 const { USER_JWT_SECRET, ADMIN_JWT_SECRET } = require('../middleware/auth');
+const { corsOptions } = require('../utils/corsOptions');
 
 const extractSocketToken = socket =>
   socket.handshake.auth?.token
@@ -42,10 +43,7 @@ const resolveSocketUser = async socket => {
 
 const attachSocketServer = (httpServer, app) => {
   const io = new Server(httpServer, {
-    cors: {
-      origin: process.env.CLIENT_URL || '*',
-      credentials: true,
-    },
+    cors: corsOptions,
   });
 
   io.use(async (socket, next) => {
