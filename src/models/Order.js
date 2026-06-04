@@ -6,6 +6,9 @@ const orderItemSchema = new mongoose.Schema(
     title: { type: String, required: true },
     quantity: { type: Number, required: true, min: 1 },
     selectedSize: { type: String, default: 'M' },
+    selectedVariant: { type: String, default: '' },
+    variantId: { type: String, default: '' },
+    sku: { type: String, default: '' },
     price: { type: Number, required: true, min: 0 },
     image: { type: String, default: '' },
   },
@@ -23,7 +26,7 @@ const orderSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true, min: 0 },
     orderStatus: {
       type: String,
-      enum: ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'],
+      enum: ['pending', 'paid', 'processing', 'order-confirmed', 'packed', 'shipping', 'near-delivery', 'shipped', 'out-for-delivery', 'delivered', 'cancelled'],
       default: 'pending',
     },
     paymentStatus: {
@@ -33,6 +36,11 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: { type: String, default: 'card' },
     paymentReference: { type: String, default: '' },
+    statusHistory: [{
+      status: { type: String, required: true },
+      label: { type: String, required: true },
+      timestamp: { type: Date, default: Date.now },
+    }],
   },
   { timestamps: true },
 );

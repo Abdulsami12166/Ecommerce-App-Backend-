@@ -1,5 +1,18 @@
 const mongoose = require('mongoose');
 
+const variantSchema = new mongoose.Schema(
+  {
+    name: { type: String, trim: true },
+    value: { type: String, trim: true },
+    attributes: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
+    price: { type: Number, min: 0 },
+    stock: { type: Number, min: 0 },
+    sku: { type: String, trim: true },
+    images: [{ type: String, trim: true }],
+  },
+  { timestamps: true },
+);
+
 const productSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
@@ -7,10 +20,25 @@ const productSchema = new mongoose.Schema(
     description: { type: String, required: true },
     brand: { type: String, trim: true },
     category: { type: String, required: true, trim: true },
+    subCategory: { type: String, trim: true },
+    subcategory: { type: String, trim: true },
+    type: { type: String, trim: true },
     price: { type: Number, required: true, min: 0 },
     discountedPrice: { type: Number, min: 0, default: 0 },
     stock: { type: Number, default: 0 },
     images: [{ type: String }],
+    attributes: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
+    specifications: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
+    inventory: {
+      sku: { type: String, trim: true },
+      stock: { type: Number, default: 0, min: 0 },
+      lowStockThreshold: { type: Number, default: 5, min: 0 },
+    },
+    variants: [variantSchema],
+    sizes: [{ type: String, trim: true }],
+    material: { type: String, trim: true },
+    color: { type: String, trim: true },
+    tags: [{ type: String, trim: true }],
     seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     isPublished: { type: Boolean, default: true },
     averageRating: { type: Number, default: 0 },

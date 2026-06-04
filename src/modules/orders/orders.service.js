@@ -13,6 +13,9 @@ const createOrderPayload = (currentUser, payload) => {
     title: item.title,
     quantity: item.quantity,
     selectedSize: item.size || item.selectedSize || 'M',
+    selectedVariant: item.variant || item.selectedVariant || item.size || '',
+    variantId: item.variantId || '',
+    sku: item.sku || '',
     price: item.price,
     image: item.image || '',
   }));
