@@ -36,6 +36,10 @@ const attachUserFromToken = async (req, decoded) => {
     throw new AppError('Account not found', 401);
   }
 
+  if (user.blocked) {
+    throw new AppError('Your account has been blocked by an administrator', 403);
+  }
+
   if ((user.tokenVersion || 0) !== (decoded.tokenVersion || 0)) {
     throw new AppError('Session is no longer valid. Please sign in again.', 401);
   }
