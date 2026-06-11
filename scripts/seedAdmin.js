@@ -12,45 +12,59 @@ const connect = async () => {
   await mongoose.connect(process.env.MONGO_URI);
 };
 
+const adminAccounts = [
+  {
+    name: 'Super Admin',
+    email: 'superadmin@company.com',
+    role: 'super-admin',
+    password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123',
+  },
+  {
+    name: 'Product Manager',
+    email: 'products@company.com',
+    role: 'product-manager',
+    password: process.env.PRODUCT_MANAGER_PASSWORD || 'ProductManager@123',
+  },
+  {
+    name: 'Support Admin',
+    email: 'support@company.com',
+    role: 'support',
+    password: process.env.SUPPORT_ADMIN_PASSWORD || 'SupportAdmin@123',
+  },
+];
+
 const seedAdmin = async () => {
-  const name = process.env.ADMIN_SEED_NAME || 'Primary Admin';
-  const email = (process.env.ADMIN_SEED_EMAIL || '').trim().toLowerCase();
-  const password = process.env.ADMIN_SEED_PASSWORD || '';
-  const phone = process.env.ADMIN_SEED_PHONE || '';
+  const results = [];
 
-  if (!email || !password) {
-    throw new Error('ADMIN_SEED_EMAIL and ADMIN_SEED_PASSWORD are required.');
-  }
+  for (const account of adminAccounts) {
+    const email = account.email.trim().toLowerCase();
+    const existingUser = await User.findOne({email}).select('+password +tokenVersion');
 
-  const existingUser = await User.findOne({email}).select('+password');
-
-  if (existingUser) {
-    existingUser.name = name;
-    existingUser.phone = phone;
-    existingUser.role = 'admin';
-    existingUser.blocked = false;
-    existingUser.isVerified = true;
-
-    if (password) {
-      existingUser.password = password;
+    if (existingUser) {
+      existingUser.name = account.name;
+      existingUser.role = account.role;
+      existingUser.password = account.password;
+      existingUser.blocked = false;
+      existingUser.isVerified = true;
+      existingUser.tokenVersion = (existingUser.tokenVersion || 0) + 1;
+      await existingUser.save();
+      results.push({email, role: account.role, status: 'updated'});
+      continue;
     }
 
-    await existingUser.save();
-    console.log(`Updated admin user: ${email}`);
-    return;
+    await User.create({
+      name: account.name,
+      email,
+      password: account.password,
+      role: account.role,
+      isVerified: true,
+      blocked: false,
+    });
+
+    results.push({email, role: account.role, status: 'created'});
   }
 
-  await User.create({
-    name,
-    email,
-    password,
-    phone,
-    role: 'admin',
-    isVerified: true,
-    blocked: false,
-  });
-
-  console.log(`Created admin user: ${email}`);
+  console.table(results);
 };
 
 const main = async () => {

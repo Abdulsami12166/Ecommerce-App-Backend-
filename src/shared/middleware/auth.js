@@ -79,6 +79,16 @@ const requireAdminAuth = async (req, res, next) => {
   }
 };
 
+const requireAdminRoles = (...roles) => (req, res, next) => {
+  const allowedRoles = roles.map(normalizeRole);
+
+  if (!allowedRoles.includes(normalizeRole(req.user?.role))) {
+    return next(new AppError('Access denied', 403));
+  }
+
+  return next();
+};
+
 module.exports = {
   USER_JWT_SECRET,
   ADMIN_JWT_SECRET,
@@ -86,4 +96,5 @@ module.exports = {
   normalizeRole,
   requireUserAuth,
   requireAdminAuth,
+  requireAdminRoles,
 };
