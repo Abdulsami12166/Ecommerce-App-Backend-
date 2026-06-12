@@ -31,7 +31,13 @@ const TrackOrderScreen = ({ navigation, route }) => {
 
     const status = activeOrder?.orderStatus || activeOrder?.status?.toLowerCase().replace(/\s+/g, '-') || 'processing'
     const order = ['order-confirmed', 'packed', 'shipped', 'out-for-delivery', 'delivered']
-    const aliases = {processing: 'order-confirmed', shipping: 'shipped', 'near-delivery': 'out-for-delivery'}
+    const aliases = {
+      pending: 'order-confirmed',
+      paid: 'order-confirmed',
+      processing: 'order-confirmed',
+      shipping: 'shipped',
+      'near-delivery': 'out-for-delivery',
+    }
     const currentIndex = order.indexOf(aliases[status] || status)
     const history = activeOrder.statusHistory || []
     const labels = {

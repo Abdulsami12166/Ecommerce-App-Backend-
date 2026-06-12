@@ -56,6 +56,7 @@ const createOrderPayload = (currentUser, payload) => {
   const shippingFee = Number(payload.shippingFee || 0);
   const taxAmount = Number(payload.taxAmount || 0);
 
+  const initialStatus = payload.orderStatus || 'processing';
   return {
     user: currentUser._id,
     items: normalizedItems,
@@ -64,7 +65,17 @@ const createOrderPayload = (currentUser, payload) => {
     shippingFee,
     taxAmount,
     totalAmount: subtotal + shippingFee + taxAmount,
-    orderStatus: payload.orderStatus || 'processing',
+    orderStatus: initialStatus,
+    statusHistory: [
+      {
+        status: initialStatus,
+        label: String(initialStatus)
+          .split('-')
+          .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' '),
+        timestamp: new Date(),
+      },
+    ],
     paymentStatus: payload.paymentStatus || 'pending',
     paymentMethod: payload.paymentMethod || 'card',
     paymentReference: payload.paymentReference || '',

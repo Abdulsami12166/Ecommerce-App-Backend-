@@ -248,8 +248,26 @@ const createAdminOrder = async (payload, app) => {
 const updateOrderStatus = async (orderId, payload, app) => {
   const order = await adminRepository.getOrderById(orderId);
   if (!order) throw new AppError('Order not found', 404);
-  if (payload.orderStatus) order.orderStatus = payload.orderStatus;
-  if (payload.paymentStatus) order.paymentStatus = payload.paymentStatus;
+  const nextStatus = payload.orderStatus || order.orderStatus;
+  const nextPaymentStatus = payload.paymentStatus || order.paymentStatus;
+
+  if (payload.orderStatus) {
+    order.orderStatus = payload.orderStatus;
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({
+      status: payload.orderStatus,
+      label: String(payload.orderStatus)
+        .split('-')
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' '),
+      timestamp: new Date(),
+    });
+  }
+
+  if (payload.paymentStatus) {
+    order.paymentStatus = payload.paymentStatus;
+  }
+
   await adminRepository.saveOrder(order);
   await adminRepository.createActivity({
     user: order.user,
@@ -260,8 +278,8 @@ const updateOrderStatus = async (orderId, payload, app) => {
   const eventPayload = {
     orderId: String(order._id),
     userId: String(order.user),
-    orderStatus: order.orderStatus,
-    paymentStatus: order.paymentStatus,
+    orderStatus: nextStatus,
+    paymentStatus: nextPaymentStatus,
   };
 
   emitToAdmins(app, socketEvents.LEGACY.ORDER_STATUS_CHANGED, eventPayload);
