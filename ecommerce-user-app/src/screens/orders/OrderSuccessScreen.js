@@ -24,6 +24,8 @@ const OrderSuccessScreen = ({ navigation, route }) => {
     [orders, route.params?.orderId],
   )
 
+  const paymentPending = order?.paymentStatus !== 'paid';
+
   const goToOrders = () => {
     navigation.dispatch(
       CommonActions.reset({
@@ -64,13 +66,12 @@ const OrderSuccessScreen = ({ navigation, route }) => {
           <Text style={styles.summaryLabel}>Order Number</Text>
           <Text style={styles.summaryValue}>{order.code}</Text>
           <Text style={styles.summaryMeta}>{order.eta}</Text>
+          {paymentPending && (
+            <Text style={styles.pendingText}>
+              Payment is pending. Please complete the QR payment in your wallet app to confirm the order.
+            </Text>
+          )}
         </View>
-              {/* //CustomButton onPress={goToTracking} title="Track Order" />
-              //if(order.status === 'Current'){
-              //  setInterval(() => {
-              //    flag=flag+1
-              //  }, interval);
-              //} */}
         <CustomButton title="View Order" onPress={goToOrders} />
         <CustomButton
           title="Track Order"
@@ -183,10 +184,13 @@ const createStyles = colors => StyleSheet.create({
     marginTop: 6,
     color: colors.textMuted,
   },
+  pendingText: {
+    marginTop: spacing.sm,
+    color: '#BF5F00',
+    fontWeight: '700',
+  },
   secondaryButton: {
     marginTop: spacing.md,
-    //marginVertical: spacing.md,
-    //paddingVertical: spacing.md,
   },
 })
 

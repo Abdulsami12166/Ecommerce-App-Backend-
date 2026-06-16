@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import RazorpayCheckout from 'react-native-razorpay';
 import {
   Alert,
@@ -78,6 +78,7 @@ const PaymentScreen = ({ navigation }) => {
     paymentMethods.find(method => method.selected)?.id || paymentMethods[0]?.id,
   );
   const [selectedQuickPay, setSelectedQuickPay] = useState('');
+  const [qrPaymentMode, setQrPaymentMode] = useState('checkout');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [walletImageErrors, setWalletImageErrors] = useState({});
 
@@ -95,6 +96,35 @@ const PaymentScreen = ({ navigation }) => {
       paymentMethods.find(method => method.selected)?.id || paymentMethods[0]?.id,
     );
   }, [paymentMethods]);
+
+  useEffect(() => {
+    setQrPaymentMode('checkout');
+  }, [selectedPaymentMethod, selectedQuickPay]);
+
+  const selectedMethod = paymentMethods.find(method => method.id === selectedPaymentMethod);
+
+  const qrPayload = useMemo(() => {
+    const amount = finalAmount.toFixed(2);
+    const methodLabel = selectedQuickPay
+      ? walletOptions.find(wallet => wallet.id === selectedQuickPay)?.label || selectedQuickPay
+      : selectedMethod?.title || 'Razorpay';
+
+    return `upi://pay?pa=ecommerce@upi&pn=Ecommerce&cu=INR&am=${amount}&tn=${encodeURIComponent(methodLabel)}`;
+  }, [selectedMethod, selectedQuickPay, finalAmount]);
+
+  const qrMatrix = useMemo(() => {
+    const seedString = qrPayload || 'ecommerce-qr';
+    const hash = Array.from(seedString).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+
+    return Array.from({ length: 21 }, (_, rowIndex) =>
+      Array.from({ length: 21 }, (_, colIndex) => {
+        const value = (hash + rowIndex * 31 + colIndex * 17) % 3;
+        return value !== 0;
+      }),
+    );
+  }, [qrPayload]);
+
+  const showQrOptions = Boolean(selectedMethod && (selectedMethod.type === 'digital' || selectedQuickPay));
 
   const unselectProviders = () => {
     // AppContext.selectPaymentMethod(methodId) already enforces single-selection
@@ -169,7 +199,12 @@ const PaymentScreen = ({ navigation }) => {
         transactionStatus: selectedMethod?.type === 'cash' ? 'pending' : 'paid',
       };
 
-      if (selectedMethod?.type !== 'cash') {
+      if (selectedMethod?.type !== 'cash' && qrPaymentMode === 'qr') {
+        paymentPayload = {
+          paymentStatus: 'pending',
+          transactionStatus: 'pending',
+        };
+      } else if (selectedMethod?.type !== 'cash') {
         const checkoutPayload = {
           ...baseOrderPayload,
           items: cartItems.map(item => ({
@@ -221,6 +256,9 @@ const PaymentScreen = ({ navigation }) => {
       const nextOrder = await placeOrder({
         ...baseOrderPayload,
         ...paymentPayload,
+        paymentMethod: selectedQuickPay
+          ? walletOptions.find(wallet => wallet.id === selectedQuickPay)?.label
+          : selectedMethod?.title,
       });
       navigation.replace('OrderSuccess', { orderId: nextOrder.id });
     } catch (error) {
@@ -372,6 +410,60 @@ const PaymentScreen = ({ navigation }) => {
             );
           })}
         </View>
+
+        {showQrOptions && (
+          <View style={styles.qrModeCard}>
+            <Text style={styles.sectionTitle}>Payment flow</Text>
+            <View style={styles.paymentModeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.paymentModeButton,
+                  styles.paymentModeButtonSpacer,
+                  qrPaymentMode === 'checkout' && styles.paymentModeButtonActive,
+                ]}
+                onPress={() => setQrPaymentMode('checkout')}
+              >
+                <Text style={[styles.paymentModeLabel, qrPaymentMode === 'checkout' && styles.paymentModeLabelActive]}>
+                  In-app checkout
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.paymentModeButton,
+                  qrPaymentMode === 'qr' && styles.paymentModeButtonActive,
+                ]}
+                onPress={() => setQrPaymentMode('qr')}
+              >
+                <Text style={[styles.paymentModeLabel, qrPaymentMode === 'qr' && styles.paymentModeLabelActive]}>
+                  Scan QR
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {qrPaymentMode === 'qr' && (
+              <View style={styles.qrPreviewCard}>
+                <Text style={styles.qrHint}>
+                  Scan this UPI QR with your bank or wallet app to pay {formatCurrency(finalAmount)}.
+                </Text>
+                <View style={styles.qrCode}>
+                  {qrMatrix.map((row, rowIndex) => (
+                    <View key={`qr-row-${rowIndex}`} style={styles.qrRow}>
+                      {row.map((filled, colIndex) => (
+                        <View
+                          key={`qr-cell-${rowIndex}-${colIndex}`}
+                          style={[styles.qrCell, filled && styles.qrCellFilled]}
+                        />
+                      ))}
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.qrPayload}>{qrPayload}</Text>
+                <Text style={styles.qrNote}>
+                  After scanning, press Place Order to record the order as pending until payment is verified.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>More Payment Options</Text>
         {digitalMethods.length ? (
@@ -599,6 +691,85 @@ const createStyles = colors =>
     emptyCouponBody: {
       marginTop: spacing.sm,
       color: colors.textMuted,
+    },
+    qrModeCard: {
+      padding: spacing.lg,
+      borderRadius: radius.lg,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: spacing.lg,
+    },
+    paymentModeRow: {
+      flexDirection: 'row',
+      marginBottom: spacing.md,
+    },
+    paymentModeButton: {
+      flex: 1,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    paymentModeButtonSpacer: {
+      marginRight: spacing.sm,
+    },
+    paymentModeButtonActive: {
+      borderColor: colors.primary,
+      backgroundColor: `${colors.primary}14`,
+    },
+    paymentModeLabel: {
+      color: colors.text,
+      fontWeight: '700',
+    },
+    paymentModeLabelActive: {
+      color: colors.primary,
+    },
+    qrPreviewCard: {
+      padding: spacing.lg,
+      borderRadius: radius.lg,
+      backgroundColor: colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    qrHint: {
+      color: colors.textMuted,
+      marginBottom: spacing.md,
+      lineHeight: 20,
+    },
+    qrCode: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: radius.lg,
+      backgroundColor: colors.background,
+      padding: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    qrRow: {
+      flex: 1,
+      flexDirection: 'row',
+    },
+    qrCell: {
+      flex: 1,
+      aspectRatio: 1,
+      margin: 0.5,
+      backgroundColor: colors.surface,
+    },
+    qrCellFilled: {
+      backgroundColor: colors.text,
+    },
+    qrPayload: {
+      color: colors.textMuted,
+      fontSize: 12,
+      marginBottom: spacing.sm,
+    },
+    qrNote: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 20,
     },
     summaryCard: {
       marginVertical: spacing.xl,
