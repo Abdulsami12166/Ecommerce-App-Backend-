@@ -498,6 +498,63 @@ export const AppProvider = ({ children }) => {
           data: { screen: 'Notifications' },
         }).catch(() => {});
       }),
+
+      // ── Support: Tickets ─────────────────────────────────────────────
+      subscribeStoreEvent('support.ticket.updated', payload => {
+        const ticketId = payload?.ticketId || payload?._id;
+        const status = payload?.status || 'updated';
+        pushActivity(`Ticket ${ticketId ? `#${String(ticketId).slice(-6).toUpperCase()}` : ''} ${status}`);
+        showLocalNotification({
+          title: 'Ticket updated',
+          body: `Your support ticket is now ${status}.`,
+          data: { screen: 'TicketDetail', ticketId },
+        }).catch(() => {});
+      }),
+      subscribeStoreEvent('support.ticket.message_added', payload => {
+        const ticketId = payload?.ticketId || payload?._id;
+        pushActivity('New reply on your support ticket');
+        showLocalNotification({
+          title: 'New ticket reply',
+          body: 'Support team replied to your ticket.',
+          data: { screen: 'TicketDetail', ticketId },
+        }).catch(() => {});
+      }),
+
+      // ── Support: Refunds ──────────────────────────────────────────────
+      subscribeStoreEvent('support.refund.updated', payload => {
+        const refundId = payload?.refundId || payload?._id;
+        const status = payload?.status || 'updated';
+        pushActivity(`Refund ${status}`);
+        showLocalNotification({
+          title: 'Refund status update',
+          body: `Your refund request is now ${status}.`,
+          data: { screen: 'RefundTracking', refundId },
+        }).catch(() => {});
+      }),
+
+      // ── Support: Returns ──────────────────────────────────────────────
+      subscribeStoreEvent('support.return.updated', payload => {
+        const returnId = payload?.returnId || payload?._id;
+        const status = payload?.status || 'updated';
+        pushActivity(`Return ${status}`);
+        showLocalNotification({
+          title: 'Return status update',
+          body: `Your return request is now ${status}.`,
+          data: { screen: 'ReturnTracking', returnId },
+        }).catch(() => {});
+      }),
+
+      // ── Support: Replacements ─────────────────────────────────────────
+      subscribeStoreEvent('support.replacement.updated', payload => {
+        const replacementId = payload?.replacementId || payload?._id;
+        const status = payload?.status || 'updated';
+        pushActivity(`Replacement ${status}`);
+        showLocalNotification({
+          title: 'Replacement status update',
+          body: `Your replacement request is now ${status}.`,
+          data: { screen: 'ReplacementTracking', replacementId },
+        }).catch(() => {});
+      }),
     ];
 
     return () => {

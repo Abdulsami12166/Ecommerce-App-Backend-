@@ -43,8 +43,12 @@ const RequestReturnScreen = ({ navigation, route }) => {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { orders, authToken } = useAppStore();
 
+  // Support pre-selecting from order/product context
+  const prefillOrderId = route.params?.orderId || null;
+  const prefillProductId = route.params?.productId || null;
+
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectedItems, setSelectedItems] = useState(prefillProductId ? [prefillProductId] : []);
   const [selectedReason, setSelectedReason] = useState(null);
   const [selectedCondition, setSelectedCondition] = useState('good');
   const [comments, setComments] = useState('');
@@ -56,7 +60,8 @@ const RequestReturnScreen = ({ navigation, route }) => {
     zipCode: '',
   });
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Select Order, 2: Select Items, 3: Select Reason, 4: Upload Images, 5: Pickup Address
+  // If orderId provided, skip step 1 (start at step 2 with that order pre-selected)
+  const [step, setStep] = useState(prefillOrderId ? 2 : 1);
 
   const eligibleOrders = useMemo(
     () => orders.filter(order => 
@@ -66,6 +71,19 @@ const RequestReturnScreen = ({ navigation, route }) => {
     ),
     [orders]
   );
+
+  // Pre-select the order if orderId was passed in params
+  React.useEffect(() => {
+    if (prefillOrderId) {
+      const found = orders.find(o => o.id === prefillOrderId || o._id === prefillOrderId);
+      if (found) {
+        setSelectedOrder(found);
+        if (prefillProductId) {
+          setSelectedItems([prefillProductId]);
+        }
+      }
+    }
+  }, [prefillOrderId, prefillProductId, orders]);
 
   const handleSelectOrder = (order) => {
     setSelectedOrder(order);

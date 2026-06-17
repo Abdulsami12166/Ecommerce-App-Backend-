@@ -33,17 +33,35 @@ const RequestRefundScreen = ({ navigation, route }) => {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { orders, authToken } = useAppStore();
 
+  // Support pre-selecting from order/product context
+  const prefillOrderId = route.params?.orderId || null;
+  const prefillProductId = route.params?.productId || null;
+
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectedItems, setSelectedItems] = useState(prefillProductId ? [prefillProductId] : []);
   const [selectedReason, setSelectedReason] = useState(null);
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Select Order, 2: Select Items, 3: Select Reason
+  // If orderId provided, skip step 1
+  const [step, setStep] = useState(prefillOrderId ? 2 : 1);
 
   const eligibleOrders = useMemo(
     () => orders.filter(order => order.statusGroup === 'completed' || order.statusGroup === 'current'),
     [orders]
   );
+
+  // Pre-select the order if orderId was passed in params
+  React.useEffect(() => {
+    if (prefillOrderId) {
+      const found = orders.find(o => o.id === prefillOrderId || o._id === prefillOrderId);
+      if (found) {
+        setSelectedOrder(found);
+        if (prefillProductId) {
+          setSelectedItems([prefillProductId]);
+        }
+      }
+    }
+  }, [prefillOrderId, prefillProductId, orders]);
 
   const handleSelectOrder = (order) => {
     setSelectedOrder(order);
@@ -82,11 +100,12 @@ const RequestRefundScreen = ({ navigation, route }) => {
         comments,
       }, authToken);
 
-      const refundAmount = formatCurrency(refundAmount);
+      // Use the API-returned refund amount if available, otherwise fall back to locally computed value
+      const confirmedAmount = response.data?.refundAmount ?? refundAmount;
 
       Alert.alert(
         'Refund Request Submitted',
-        `Your refund request for ${refundAmount} has been submitted. Our team will review it within 24-48 hours.`,
+        `Your refund request for ${formatCurrency(confirmedAmount)} has been submitted. Our team will review it within 24-48 hours.`,
         [
           {
             text: 'OK',

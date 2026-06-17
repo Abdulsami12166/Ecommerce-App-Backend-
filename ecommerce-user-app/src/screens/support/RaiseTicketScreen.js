@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   View,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import CustomButton from '../../components/CustomButton';
 import ScreenHeader from '../../components/ScreenHeader';
@@ -33,8 +32,16 @@ const RaiseTicketScreen = ({ navigation, route }) => {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { authToken } = useAppStore();
 
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [subject, setSubject] = useState('');
+  // Support pre-filling from product/order context
+  const prefillProductId = route.params?.productId || null;
+  const prefillProductName = route.params?.productName || null;
+  const prefillOrderId = route.params?.orderId || null;
+  const prefillOrderCode = route.params?.orderCode || null;
+  const prefillCategory = route.params?.category || null;
+  const prefillSubject = route.params?.subject || (prefillProductName ? `Issue with ${prefillProductName}` : '');
+
+  const [selectedCategory, setSelectedCategory] = useState(prefillCategory || null);
+  const [subject, setSubject] = useState(prefillSubject);
   const [description, setDescription] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,20 +60,21 @@ const RaiseTicketScreen = ({ navigation, route }) => {
 
     setLoading(true);
     try {
-      const response = await ticketApi.createTicket({
+      await ticketApi.createTicket({
         category: selectedCategory,
-        subject,
-        description,
+        subject: subject.trim(),
+        description: description.trim(),
         priority,
-        email,
+        email: email.trim(),
+        ...(prefillProductId && { relatedProduct: prefillProductId }),
+        ...(prefillOrderId && { relatedOrder: prefillOrderId }),
       }, authToken);
 
-      Alert.alert('Success', 'Your ticket has been created successfully! We will get back to you soon.', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      Alert.alert(
+        'Ticket Created',
+        'Your support ticket has been created successfully. We will get back to you soon.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
     } catch (error) {
       Alert.alert('Error', error?.message || 'Failed to create ticket. Please try again.');
     } finally {
@@ -84,6 +92,30 @@ const RaiseTicketScreen = ({ navigation, route }) => {
         scrollEnabled={!loading}
       >
         <ScreenHeader title="Raise a Ticket" onBack={() => navigation.goBack()} />
+
+        {/* Product / Order context banner */}
+        {(prefillProductName || prefillOrderCode) && (
+          <View style={styles.contextBanner}>
+            {prefillProductName && (
+              <View style={styles.contextRow}>
+                <Text style={styles.contextIcon}>📦</Text>
+                <View style={styles.contextText}>
+                  <Text style={styles.contextLabel}>Product</Text>
+                  <Text style={styles.contextValue} numberOfLines={1}>{prefillProductName}</Text>
+                </View>
+              </View>
+            )}
+            {prefillOrderCode && (
+              <View style={[styles.contextRow, prefillProductName && styles.contextRowBorder]}>
+                <Text style={styles.contextIcon}>🧾</Text>
+                <View style={styles.contextText}>
+                  <Text style={styles.contextLabel}>Order</Text>
+                  <Text style={styles.contextValue}>{prefillOrderCode}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>Need Help?</Text>
@@ -165,6 +197,7 @@ const RaiseTicketScreen = ({ navigation, route }) => {
             onChangeText={setEmail}
             keyboardType="email-address"
             editable={!loading}
+            autoCapitalize="none"
           />
         </View>
 
@@ -175,19 +208,11 @@ const RaiseTicketScreen = ({ navigation, route }) => {
             {['low', 'normal', 'high', 'urgent'].map(p => (
               <TouchableOpacity
                 key={p}
-                style={[
-                  styles.priorityButton,
-                  priority === p && styles.priorityButtonActive,
-                ]}
+                style={[styles.priorityButton, priority === p && styles.priorityButtonActive]}
                 onPress={() => setPriority(p)}
                 disabled={loading}
               >
-                <Text
-                  style={[
-                    styles.priorityLabel,
-                    priority === p && styles.priorityLabelActive,
-                  ]}
-                >
+                <Text style={[styles.priorityLabel, priority === p && styles.priorityLabelActive]}>
                   {p.charAt(0).toUpperCase() + p.slice(1)}
                 </Text>
               </TouchableOpacity>
@@ -199,6 +224,18 @@ const RaiseTicketScreen = ({ navigation, route }) => {
         {selectedCategory && (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>Ticket Summary</Text>
+            {prefillProductName && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Product:</Text>
+                <Text style={styles.summaryValue} numberOfLines={1}>{prefillProductName}</Text>
+              </View>
+            )}
+            {prefillOrderCode && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Order:</Text>
+                <Text style={styles.summaryValue}>{prefillOrderCode}</Text>
+              </View>
+            )}
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Category:</Text>
               <Text style={styles.summaryValue}>{selectedCategoryLabel}</Text>
@@ -209,7 +246,7 @@ const RaiseTicketScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subject:</Text>
-              <Text style={styles.summaryValue}>{subject || '(Not filled)'}</Text>
+              <Text style={styles.summaryValue} numberOfLines={2}>{subject || '(Not filled)'}</Text>
             </View>
           </View>
         )}
@@ -224,7 +261,7 @@ const RaiseTicketScreen = ({ navigation, route }) => {
           title="Cancel"
           onPress={() => navigation.goBack()}
           disabled={loading}
-          style={{ backgroundColor: colors.surfaceMuted }}
+          style={{ backgroundColor: colors.surfaceMuted, marginTop: spacing.sm }}
           textStyle={{ color: colors.text }}
         />
       </ScrollView>
@@ -234,156 +271,75 @@ const RaiseTicketScreen = ({ navigation, route }) => {
 
 const createStyles = colors =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+    contextBanner: {
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      backgroundColor: colors.surfaceSecondary,
+      marginBottom: spacing.lg,
+      overflow: 'hidden',
     },
-    content: {
-      padding: spacing.lg,
-      paddingBottom: spacing.xxl,
+    contextRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: spacing.md,
+      gap: spacing.md,
     },
+    contextRowBorder: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    contextIcon: { fontSize: 20 },
+    contextText: { flex: 1 },
+    contextLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+    contextValue: { fontSize: 14, fontWeight: '700', color: colors.text, marginTop: 2 },
     infoCard: {
       backgroundColor: colors.surfaceSecondary,
       borderRadius: radius.md,
       padding: spacing.lg,
       marginBottom: spacing.xl,
     },
-    infoTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: spacing.sm,
-    },
-    infoText: {
-      fontSize: 14,
-      color: colors.textMuted,
-      lineHeight: 20,
-    },
-    section: {
-      marginBottom: spacing.xl,
-    },
-    sectionTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: spacing.md,
-    },
-    categoryGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginHorizontal: -spacing.sm,
-    },
-    categoryButtonInner: {
-      width: '50%',
-      padding: spacing.sm,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.md,
-    },
+    infoTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+    infoText: { fontSize: 14, color: colors.textMuted, lineHeight: 20 },
+    section: { marginBottom: spacing.xl },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
+    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -spacing.sm },
+    categoryButtonInner: { width: '50%', padding: spacing.sm, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
     categoryButtonContent: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: spacing.md,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-      width: '100%',
+      alignItems: 'center', justifyContent: 'center', padding: spacing.md,
+      borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+      backgroundColor: colors.surface, width: '100%',
     },
-    categoryButtonContentActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    categoryIcon: {
-      fontSize: 28,
-      marginBottom: spacing.sm,
-    },
-    categoryLabel: {
-      fontSize: 12,
-      color: colors.text,
-      textAlign: 'center',
-      fontWeight: '600',
-    },
-    categoryLabelActive: {
-      color: colors.surfaceLight,
-    },
-    inputLabel: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: spacing.sm,
-    },
+    categoryButtonContentActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    categoryIcon: { fontSize: 28, marginBottom: spacing.sm },
+    categoryLabel: { fontSize: 12, color: colors.text, textAlign: 'center', fontWeight: '600' },
+    categoryLabelActive: { color: colors.surfaceLight },
+    inputLabel: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
     input: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      padding: spacing.md,
-      fontSize: 14,
-      color: colors.text,
-      backgroundColor: colors.surface,
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+      padding: spacing.md, fontSize: 14, color: colors.text, backgroundColor: colors.surface,
     },
-    descriptionInput: {
-      height: 120,
-      textAlignVertical: 'top',
-    },
-    charCount: {
-      fontSize: 12,
-      color: colors.textMuted,
-      marginTop: spacing.xs,
-      textAlign: 'right',
-    },
-    priorityRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
+    descriptionInput: { height: 120, textAlignVertical: 'top' },
+    charCount: { fontSize: 12, color: colors.textMuted, marginTop: spacing.xs, textAlign: 'right' },
+    priorityRow: { flexDirection: 'row', justifyContent: 'space-between' },
     priorityButton: {
-      flex: 1,
-      marginHorizontal: spacing.xs,
-      paddingVertical: spacing.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      backgroundColor: colors.surface,
+      flex: 1, marginHorizontal: spacing.xs, paddingVertical: spacing.md,
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+      alignItems: 'center', backgroundColor: colors.surface,
     },
-    priorityButtonActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    priorityLabel: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    priorityLabelActive: {
-      color: colors.surfaceLight,
-    },
+    priorityButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    priorityLabel: { fontSize: 12, fontWeight: '600', color: colors.text },
+    priorityLabelActive: { color: colors.surfaceLight },
     summaryCard: {
-      backgroundColor: colors.surfaceSecondary,
-      borderRadius: radius.md,
-      padding: spacing.lg,
-      marginBottom: spacing.xl,
+      backgroundColor: colors.surfaceSecondary, borderRadius: radius.md,
+      padding: spacing.lg, marginBottom: spacing.xl,
     },
-    summaryTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: spacing.md,
-    },
-    summaryRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: spacing.sm,
-    },
-    summaryLabel: {
-      fontSize: 12,
-      color: colors.textMuted,
-    },
-    summaryValue: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.text,
-    },
+    summaryTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
+    summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
+    summaryLabel: { fontSize: 12, color: colors.textMuted },
+    summaryValue: { fontSize: 12, fontWeight: '600', color: colors.text, flex: 1, textAlign: 'right', marginLeft: spacing.sm },
   });
 
 export default RaiseTicketScreen;
