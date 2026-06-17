@@ -47,6 +47,39 @@ const SupportScreen = ({ navigation, route }) => {
             Chat with different product owners and reach them by SMS, voice call, or video call.
           </Text>
         </View>
+
+        {/* Quick Actions for Support */}
+        <View style={styles.quickActionsRow}>
+          <TouchableOpacity
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate('TicketsDashboard')}
+          >
+            <Text style={styles.quickActionIcon}>🎫</Text>
+            <Text style={styles.quickActionLabel}>My Tickets</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate('RequestReturn')}
+          >
+            <Text style={styles.quickActionIcon}>📦</Text>
+            <Text style={styles.quickActionLabel}>Return Item</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate('RequestReplacement')}
+          >
+            <Text style={styles.quickActionIcon}>🔄</Text>
+            <Text style={styles.quickActionLabel}>Replace Item</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate('RequestRefund')}
+          >
+            <Text style={styles.quickActionIcon}>💰</Text>
+            <Text style={styles.quickActionLabel}>Request Refund</Text>
+          </TouchableOpacity>
+        </View>
+
         {/*
           <View style={styles.row}>
             {['All', 'Orders', 'Products', 'Account'].map(category => (
@@ -343,6 +376,31 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: colors.textMuted,
     lineHeight: 20,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    marginVertical: spacing.lg,
+    gap: spacing.md,
+  },
+  quickActionButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickActionIcon: {
+    fontSize: 28,
+    marginBottom: spacing.sm,
+  },
+  quickActionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
   },
 });
 

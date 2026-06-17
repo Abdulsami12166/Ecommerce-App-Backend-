@@ -16,6 +16,7 @@ import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
 import { formatCurrency } from '../../utils/helpers';
 import { refundApi } from '../../services/api';
+import { subscribeRefundEvents } from '../../services/socket';
 
 const STATUS_LABELS = {
   initiated: 'Initiated',
@@ -60,6 +61,15 @@ const RefundTrackingScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     loadRefundDetail();
+
+    // Subscribe to real-time refund updates
+    const unsubscribe = subscribeRefundEvents.onRefundUpdated((data) => {
+      if (data.refundId === refundId) {
+        loadRefundDetail();
+      }
+    });
+
+    return () => unsubscribe();
   }, [refundId]);
 
   const onRefresh = () => {

@@ -43,6 +43,16 @@ import OrderDetailsScreen from '../screens/orders/OrderDetailsScreen'
  import SupportChatScreen from '../screens/profile/SupportChatScreen'
   import SupportScreen from '../screens/profile/SupportScreen'
 
+import RaiseTicketScreen from '../screens/support/RaiseTicketScreen'
+import RequestRefundScreen from '../screens/support/RequestRefundScreen'
+import TicketsDashboardScreen from '../screens/support/TicketsDashboardScreen'
+import TicketDetailScreen from '../screens/support/TicketDetailScreen'
+import RefundTrackingScreen from '../screens/support/RefundTrackingScreen'
+import ReturnTrackingScreen from '../screens/support/ReturnTrackingScreen'
+import ReplacementTrackingScreen from '../screens/support/ReplacementTrackingScreen'
+import RequestReturnScreen from '../screens/support/RequestReturnScreen'
+import RequestReplacementScreen from '../screens/support/RequestReplacementScreen'
+
 import WishlistScreen from '../screens/wishlist/WishlistScreen'
 
 const Stack = createNativeStackNavigator()
@@ -188,6 +198,15 @@ name="SpecialOffers"
 <Stack.Screen name="Support" component={SupportScreen} />
 <Stack.Screen name="SupportChat" component={SupportChatScreen} />
 <Stack.Screen name="SupportCall" component={SupportCallScreen} />
+<Stack.Screen name="RaiseTicket" component={RaiseTicketScreen} />
+<Stack.Screen name="RequestRefund" component={RequestRefundScreen} />
+<Stack.Screen name="TicketsDashboard" component={TicketsDashboardScreen} />
+<Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+<Stack.Screen name="RefundTracking" component={RefundTrackingScreen} />
+<Stack.Screen name="ReturnTracking" component={ReturnTrackingScreen} />
+<Stack.Screen name="ReplacementTracking" component={ReplacementTrackingScreen} />
+<Stack.Screen name="RequestReturn" component={RequestReturnScreen} />
+<Stack.Screen name="RequestReplacement" component={RequestReplacementScreen} />
 
 {/* orders area */}
 

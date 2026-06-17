@@ -16,6 +16,7 @@ import { useAppStore } from '../../context/AppContext';
 import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
 import { ticketApi } from '../../services/api';
+import { subscribeTicketEvents } from '../../services/socket';
 
 const STATUS_FILTERS = ['all', 'open', 'in_progress', 'escalated', 'resolved', 'closed'];
 
@@ -78,6 +79,20 @@ const TicketsDashboardScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadTickets();
+
+    // Subscribe to real-time ticket updates
+    const unsubscribeUpdated = subscribeTicketEvents.onTicketUpdated(() => {
+      loadTickets();
+    });
+
+    const unsubscribeMessage = subscribeTicketEvents.onTicketMessageAdded(() => {
+      loadTickets();
+    });
+
+    return () => {
+      unsubscribeUpdated();
+      unsubscribeMessage();
+    };
   }, []);
 
   const onRefresh = () => {

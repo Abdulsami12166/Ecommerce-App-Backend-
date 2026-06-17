@@ -15,6 +15,7 @@ import { useAppStore } from '../../context/AppContext';
 import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
 import { returnApi } from '../../services/api';
+import { subscribeReturnEvents } from '../../services/socket';
 
 const STATUS_LABELS = {
   initiated: 'Initiated',
@@ -63,6 +64,15 @@ const ReturnTrackingScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     loadReturnDetail();
+
+    // Subscribe to real-time return updates
+    const unsubscribe = subscribeReturnEvents.onReturnUpdated((data) => {
+      if (data.returnId === returnId) {
+        loadReturnDetail();
+      }
+    });
+
+    return () => unsubscribe();
   }, [returnId]);
 
   const onRefresh = () => {

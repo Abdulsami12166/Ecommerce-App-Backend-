@@ -15,6 +15,7 @@ import { useAppStore } from '../../context/AppContext';
 import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
 import { replacementApi } from '../../services/api';
+import { subscribeReplacementEvents } from '../../services/socket';
 
 const STATUS_LABELS = {
   initiated: 'Initiated',
@@ -61,6 +62,15 @@ const ReplacementTrackingScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     loadReplacementDetail();
+
+    // Subscribe to real-time replacement updates
+    const unsubscribe = subscribeReplacementEvents.onReplacementUpdated((data) => {
+      if (data.replacementId === replacementId) {
+        loadReplacementDetail();
+      }
+    });
+
+    return () => unsubscribe();
   }, [replacementId]);
 
   const onRefresh = () => {
