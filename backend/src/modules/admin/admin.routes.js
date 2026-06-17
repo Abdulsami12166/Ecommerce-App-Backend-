@@ -1,6 +1,7 @@
 const express = require('express');
 
 const adminController = require('./admin.controller');
+const supportController = require('../support/support.controller');
 const { requireAdminAuth, requireAdminRole } = require('../../shared/middleware/auth');
 const reportsRouter = require('../reports/reports.routes');
 
@@ -24,6 +25,47 @@ router.get('/customers/:id/activity-logs', requireAdminAuth, requireAdminRole('a
 router.get('/customers/:id/notification-preferences', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getCustomerNotificationPreferences);
 router.post('/customers/:id/block', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.blockUser);
 router.post('/customers/:id/unblock', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.unblockUser);
+
+router.get('/tickets', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllTickets);
+router.get('/tickets/:ticketId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAdminTicketDetail);
+router.post('/tickets/:ticketId/message', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.addAdminMessage);
+router.patch('/tickets/:ticketId/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.updateAdminTicketStatus);
+router.post('/tickets/:ticketId/assign', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.assignTicket);
+router.post('/tickets/:ticketId/escalate', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+  req.body.status = 'escalated';
+  return supportController.updateAdminTicketStatus(req, res, next);
+});
+
+router.get('/returns', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllReturns);
+router.get('/returns/:returnId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAdminReturnDetail);
+router.patch('/returns/:returnId/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.updateAdminReturnStatus);
+router.post('/returns/:returnId/approve', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+  req.body.status = 'approved';
+  return supportController.updateAdminReturnStatus(req, res, next);
+});
+router.post('/returns/:returnId/reject', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+  req.body.status = 'rejected';
+  return supportController.updateAdminReturnStatus(req, res, next);
+});
+
+router.get('/refunds', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllRefunds);
+router.get('/refunds/:refundId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAdminRefundDetail);
+router.post('/refunds/:refundId/approve', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+  req.body.status = 'approved';
+  return supportController.updateAdminRefundStatus(req, res, next);
+});
+router.post('/refunds/:refundId/reject', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+  req.body.status = 'rejected';
+  return supportController.updateAdminRefundStatus(req, res, next);
+});
+router.post('/refunds/:refundId/process', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+  req.body.status = 'processing';
+  return supportController.updateAdminRefundStatus(req, res, next);
+});
+router.post('/refunds/:refundId/complete', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+  req.body.status = 'completed';
+  return supportController.updateAdminRefundStatus(req, res, next);
+});
 
 router.get('/products', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.getProducts);
 router.post('/products', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.createProduct);

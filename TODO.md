@@ -1,6 +1,25 @@
-- [ ] Inspect current failing login OTP email flow (authController + email services)
-- [x] Identify root cause: missing RESEND_FROM triggers runtime error in services/emailService.js
-- [x] Update authController.js to fall back to utils/emailService.js when Resend fails due to missing sender config
-- [ ] Re-run build/tests / optionally start server to confirm /api/v1/auth/login returns 200 and OTP dispatch doesn’t crash
+# TODO - Ecommerce User App + Admin Web Completion
 
+## Phase 1: Admin Order Timeline wiring (safe, minimal)
+- [ ] Inspect backend admin orders module routing for timeline endpoints (order timeline controller/repo may not exist)
+- [ ] Implement backend admin order timeline endpoints:
+  - GET /admin/orders/:orderId/timeline
+  - POST /admin/orders/:orderId/timeline/event
+  - PATCH /admin/orders/:orderId/timeline/:eventId (optional)
+  - GET /admin/orders/:orderId/timeline/lifecycle (optional)
+- [ ] Ensure admin endpoints update order.statusHistory consistently and emit socket events to user
+- [x] Update Admin Web `OrderTimelineSection.tsx` to call `ecommerce-admin-web/src/services/orderTimeline.ts` instead of mock
+
+- [ ] Add/verify types/response mapping to match admin-web expectations
+
+## Phase 2+: Other modules
+- [ ] RBAC DB permissions and admin management endpoints
+- [ ] Products/categories/subcategories/inventory + attributes
+- [ ] Image upload Multer+Cloudinary
+- [ ] Shipments backend + user track screen syncing
+- [ ] Refund system + user UI
+- [ ] Ticket attachments + real-time updates + SLA
+- [ ] Product-specific chat (socket rooms)
+- [ ] Notifications (FCM lifecycle)
+- [ ] Persistent login AsyncStorage
 

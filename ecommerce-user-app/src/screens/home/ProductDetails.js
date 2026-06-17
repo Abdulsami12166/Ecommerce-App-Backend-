@@ -73,26 +73,43 @@ const ProductDetails = ({ navigation, route }) => {
   }, [product?.id, variants])
 
   useEffect(() => {
-    if (!route.params?.productId) {
-      setRemoteProduct(null)
+    const productId = route.params?.productId
+    setRemoteProduct(null)
+
+    if (!productId) {
       return
     }
 
-    if (catalogProducts.some(item => item.id === route.params?.productId)) {
+    const hasCatalogProduct = catalogProducts.some(
+      item => String(item.id) === String(productId) || String(item._id || item.id) === String(productId),
+    )
+
+    if (hasCatalogProduct) {
       return
     }
 
+    let isMounted = true
     productApi
-      .getProductById(route.params?.productId)
+      .getProductById(productId)
       .then(response => {
+        if (!isMounted) {
+          return
+        }
+
         const nextProduct = response.data?.data?.product
         if (nextProduct) {
           setRemoteProduct(normalizeProduct(nextProduct))
         }
       })
       .catch(() => {
-        setRemoteProduct(null)
+        if (isMounted) {
+          setRemoteProduct(null)
+        }
       })
+
+    return () => {
+      isMounted = false
+    }
   }, [catalogProducts, route.params?.productId])
 
   const supportsSize = useMemo(() => {

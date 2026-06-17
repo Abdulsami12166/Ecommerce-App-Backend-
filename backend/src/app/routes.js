@@ -3,6 +3,7 @@ const productsRoutes = require('../modules/products/products.routes');
 const usersRoutes = require('../modules/users/users.routes');
 const ordersRoutes = require('../modules/orders/orders.routes');
 const adminRoutes = require('../modules/admin/admin.routes');
+const supportRoutes = require('../modules/support/support.routes');
 
 const registerRoutes = app => {
   app.get('/', (req, res) => {
@@ -23,6 +24,7 @@ const registerRoutes = app => {
   app.use('/api/v1/products', productsRoutes);
   app.use('/api/v1/users', usersRoutes);
   app.use('/api/v1/orders', ordersRoutes);
+  app.use('/api/v1/support', supportRoutes);
   app.use('/api/v1/admin', adminRoutes);
 };
 

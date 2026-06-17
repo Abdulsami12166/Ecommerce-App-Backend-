@@ -46,7 +46,13 @@ const HomeScreen = ({ navigation }) => {
     () => orders.find(order => order.statusGroup === 'current') || orders[0] || null,
     [orders],
   )
-  const featuredImage = featuredProducts[0]?.image || currentUser?.avatar || ''
+  const featuredImage = useMemo(() => {
+    const imageProduct = featuredProducts.find(product => product.image);
+    return (
+      imageProduct?.image ||
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80'
+    );
+  }, [featuredProducts])
 
   return (
    <SafeAreaView style={styles.container}>

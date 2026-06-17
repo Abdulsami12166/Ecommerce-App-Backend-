@@ -516,6 +516,14 @@ export const AppProvider = ({ children }) => {
     });
   }, [authToken, fetchOrders]);
 
+  // Fetch products on app initialization (products are public, no auth required)
+  useEffect(() => {
+    // Fetch products immediately on app load, regardless of auth state
+    fetchCatalogProducts().catch(() => {
+      setCatalogProducts([]);
+    });
+  }, [fetchCatalogProducts]);
+
   const addProductToCart = useCallback((product, selectedSize = 'M') => {
     setCartItems(current => {
       const existingIndex = current.findIndex(
