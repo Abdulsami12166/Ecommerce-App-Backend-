@@ -4,6 +4,7 @@ const usersRoutes = require('../modules/users/users.routes');
 const ordersRoutes = require('../modules/orders/orders.routes');
 const adminRoutes = require('../modules/admin/admin.routes');
 const supportRoutes = require('../modules/support/support.routes');
+const { logger } = require('../shared/utils/logger');
 
 const registerRoutes = app => {
   app.get('/', (req, res) => {
@@ -18,6 +19,12 @@ const registerRoutes = app => {
       success: true,
       message: 'Ecommerce backend is healthy',
     });
+  });
+
+  // TEMPORARY: catch POSTs to support tickets and log body for diagnosis (unsafe - remove after debug)
+  app.post('/api/v1/support/tickets', (req, res) => {
+    logger.info('TEMP support POST received', { path: req.originalUrl, body: req.body });
+    return res.status(200).json({ success: true, message: 'Temporary support POST received', data: req.body });
   });
 
   app.use('/api/v1/auth', authRoutes);
