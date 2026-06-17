@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireUserAuth, requireAdminAuth, requireAdminRole } = require('../../../shared/middleware/auth');
+const { requireUserAuth, requireAdminAuth, requireAdminRoles } = require('../../../shared/middleware/auth');
 const supportController = require('./support.controller');
 
 const router = express.Router();
@@ -27,13 +27,13 @@ router.get('/returns/:returnId', requireUserAuth, supportController.getReturnDet
 router.get(
   '/admin/tickets',
   requireAdminAuth,
-  requireAdminRole('admin', 'super-admin', 'support'),
+  requireAdminRoles('admin', 'super-admin', 'support'),
   supportController.getAllTickets,
 );
 router.get(
   '/admin/refunds',
   requireAdminAuth,
-  requireAdminRole('admin', 'super-admin', 'support'),
+  requireAdminRoles('admin', 'super-admin', 'support'),
   supportController.getAllRefunds,
 );
 
