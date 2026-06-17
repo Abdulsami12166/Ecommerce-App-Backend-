@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireUserAuth, requireAdminAuth, requireAdminRoles } = require('../../../shared/middleware/auth');
+const { requireUserAuth, requireAdminAuth, requireAdminRoles } = require('../../shared/middleware/auth');
 const supportController = require('./support.controller');
 
 const router = express.Router();
