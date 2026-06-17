@@ -25,6 +25,12 @@ const registerRoutes = app => {
     res.json({ ok: true, message: 'support router is reachable' });
   });
 
+  // TEMPORARY: catch POSTs to support tickets and log body for diagnosis (unsafe - remove after debug)
+  app.post('/api/v1/support/tickets', (req, res) => {
+    console.log('TEMP support POST received', { path: req.originalUrl, body: req.body });
+    return res.status(200).json({ success: true, message: 'Temporary support POST received', data: req.body });
+  });
+
 
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/products', productsRoutes);
