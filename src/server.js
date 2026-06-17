@@ -11,6 +11,7 @@ const port = process.env.PORT || 5001;
 
 const startServer = async () => {
   try {
+    console.log('SERVER STARTUP: backend-only branch (commit 08ce700b with temp support handlers)');
     await connectDB();
 
     const server = http.createServer(app);
