@@ -24,7 +24,16 @@ const registerRoutes = app => {
   app.use('/api/v1/products', productsRoutes);
   app.use('/api/v1/users', usersRoutes);
   app.use('/api/v1/orders', ordersRoutes);
+  // Debug: verify support router is mounted in Render runtime
+  console.log('[routes] mounting support routes at /api/v1/support');
   app.use('/api/v1/support', supportRoutes);
+
+  // Debug: show all /api/v1/support requests that reach this layer
+  app.use('/api/v1/support', (req, res, next) => {
+    console.log('[routes] support prefix hit', { method: req.method, originalUrl: req.originalUrl });
+    next();
+  });
+
   app.use('/api/v1/admin', adminRoutes);
 };
 
