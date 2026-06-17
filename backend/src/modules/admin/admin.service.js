@@ -171,7 +171,7 @@ const createProduct = async (payload, adminUserId, app) => {
       : payload.image
         ? [payload.image]
         : [],
-    isPublished: payload.isPublished ?? true,
+    isPublished: true, // Always publish products created by admin
   };
 
   const product = await adminRepository.createProduct(nextPayload);

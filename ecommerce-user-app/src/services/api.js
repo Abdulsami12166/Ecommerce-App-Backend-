@@ -140,6 +140,32 @@ export const orderApi = {
   createOrder: (payload, token) => post('/orders', payload, token),
 };
 
+export const ticketApi = {
+  createTicket: (payload, token) => post('/support/tickets', payload, token),
+  getTickets: token => get('/support/tickets', token),
+  getTicketById: (ticketId, token) => get(`/support/tickets/${ticketId}`, token),
+  addMessage: (ticketId, payload, token) => post(`/support/tickets/${ticketId}/messages`, payload, token),
+  updateTicketStatus: (ticketId, payload, token) => patch(`/support/tickets/${ticketId}/status`, payload, token),
+};
+
+export const refundApi = {
+  requestRefund: (payload, token) => post('/support/refunds', payload, token),
+  getRefunds: token => get('/support/refunds', token),
+  getRefundById: (refundId, token) => get(`/support/refunds/${refundId}`, token),
+};
+
+export const returnApi = {
+  createReturnRequest: (payload, token) => post('/support/returns', payload, token),
+  getReturns: token => get('/support/returns', token),
+  getReturnById: (returnId, token) => get(`/support/returns/${returnId}`, token),
+};
+
+export const replacementApi = {
+  createReplacementRequest: (payload, token) => post('/support/replacements', payload, token),
+  getReplacements: token => get('/support/replacements', token),
+  getReplacementById: (replacementId, token) => get(`/support/replacements/${replacementId}`, token),
+};
+
 const api = {
   get,
   post,
