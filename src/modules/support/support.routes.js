@@ -4,6 +4,8 @@ const supportController = require('./support.controller');
 
 const router = express.Router();
 
+// Lightweight health check for support endpoints (helps diagnose 404s)
+router.get('/ping', (req, res) => res.json({ success: true, service: 'support', status: 'ok' }));
 // User routes - create and retrieve own tickets
 router.post('/tickets', requireUserAuth, supportController.createTicket);
 router.get('/tickets', requireUserAuth, supportController.getUserTickets);
