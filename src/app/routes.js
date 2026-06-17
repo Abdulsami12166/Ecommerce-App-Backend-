@@ -20,6 +20,12 @@ const registerRoutes = app => {
     });
   });
 
+  // Debug: verify support router is mounted (used for diagnosing 404s)
+  app.get('/api/v1/support/__debug', (req, res) => {
+    res.json({ ok: true, message: 'support router is reachable' });
+  });
+
+
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/products', productsRoutes);
   app.use('/api/v1/users', usersRoutes);
