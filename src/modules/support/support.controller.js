@@ -1,7 +1,7 @@
 const { ticketsRepository, returnsRepository, refundsRepository, ordersRepository } = require('./support.repository');
-const { sendErrorResponse, sendSuccessResponse } = require('../../../utils/responseHandler');
-const { emitToAdmins, emitToUser } = require('../../../shared/events/eventBus');
-const { socketEvents } = require('../../../shared/events/socketEvents');
+const { sendErrorResponse, sendSuccessResponse } = require('../../utils/responseHandler');
+const { emitToAdmins, emitToUser } = require('../../shared/events/eventBus');
+const { socketEvents } = require('../../shared/events/socketEvents');
 
 const supportController = {
   // Create support ticket

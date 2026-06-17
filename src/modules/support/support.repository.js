@@ -1,7 +1,7 @@
-const SupportTicket = require('../../../models/SupportTicket');
-const ReturnRequest = require('../../../models/ReturnRequest');
-const RefundRequest = require('../../../models/RefundRequest');
-const Order = require('../../../models/Order');
+const SupportTicket = require('../../models/SupportTicket');
+const ReturnRequest = require('../../models/ReturnRequest');
+const RefundRequest = require('../../models/RefundRequest');
+const Order = require('../../models/Order');
 
 const ticketsRepository = {
   createTicket: payload => SupportTicket.create(payload),
