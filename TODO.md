@@ -1,25 +1,10 @@
-# TODO - Ecommerce User App + Admin Web Completion
+# TODO
 
-## Phase 1: Admin Order Timeline wiring (safe, minimal)
-- [ ] Inspect backend admin orders module routing for timeline endpoints (order timeline controller/repo may not exist)
-- [ ] Implement backend admin order timeline endpoints:
-  - GET /admin/orders/:orderId/timeline
-  - POST /admin/orders/:orderId/timeline/event
-  - PATCH /admin/orders/:orderId/timeline/:eventId (optional)
-  - GET /admin/orders/:orderId/timeline/lifecycle (optional)
-- [ ] Ensure admin endpoints update order.statusHistory consistently and emit socket events to user
-- [x] Update Admin Web `OrderTimelineSection.tsx` to call `ecommerce-admin-web/src/services/orderTimeline.ts` instead of mock
-
-- [ ] Add/verify types/response mapping to match admin-web expectations
-
-## Phase 2+: Other modules
-- [ ] RBAC DB permissions and admin management endpoints
-- [ ] Products/categories/subcategories/inventory + attributes
-- [ ] Image upload Multer+Cloudinary
-- [ ] Shipments backend + user track screen syncing
-- [ ] Refund system + user UI
-- [ ] Ticket attachments + real-time updates + SLA
-- [ ] Product-specific chat (socket rooms)
-- [ ] Notifications (FCM lifecycle)
-- [ ] Persistent login AsyncStorage
+## Ticket submission + admin web display fix
+- [x] Verified backend route mounting for support ticket endpoints.
+- [x] Found that backend expects `/api/v1/...` but clients may call without the prefix.
+- [x] Added backwards-compat mounts so `/support/*` and `/admin/*` work even without `/api/v1`.
+- [x] Hardened ticket controller for missing `email` from client (uses user email if present).
+- [ ] Next: Verify admin web ticket list refresh logic (socket listener or REST polling) so newly created tickets appear immediately.
+- [ ] Run backend + admin web locally and test POST ticket and admin dashboard update.
 

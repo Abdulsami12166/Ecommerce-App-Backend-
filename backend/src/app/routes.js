@@ -26,6 +26,11 @@ const registerRoutes = app => {
   app.use('/api/v1/orders', ordersRoutes);
   app.use('/api/v1/support', supportRoutes);
   app.use('/api/v1/admin', adminRoutes);
+
+  // Backwards-compat: some clients may call without /api/v1 prefix
+  app.use('/support', supportRoutes);
+  app.use('/admin', adminRoutes);
+
 };
 
 module.exports = { registerRoutes };

@@ -10,6 +10,10 @@ const supportController = {
       const { category, subject, description, email, priority, orderId, attachments } = req.body;
       const userId = String(req.user._id || req.user.id);
 
+      // Ensure email exists (some clients don't send it)
+      const safeEmail = email || req.user?.email || undefined;
+
+
       if (!category || !subject || !description || !priority) {
         return sendErrorResponse(res, 'All fields are required', 400);
       }
