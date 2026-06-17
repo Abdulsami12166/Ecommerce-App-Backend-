@@ -14,7 +14,7 @@ const { logger } = require('../shared/utils/logger');
 const createExpressApp = () => {
   const app = express();
 
-  console.log('=== EXPRESS APP STARTUP SIGNATURE: backend-only commit 08ce700b ===');
+  console.log('=== EXPRESS APP STARTUP: backend-only branch ===');
   app.use(cors(corsOptions));
 
   app.use(express.json({ limit: '5mb' }));

@@ -20,38 +20,19 @@ const registerRoutes = app => {
     });
   });
 
-  // Debug: verify support router is mounted (used for diagnosing 404s)
-  app.get('/api/v1/support/__debug', (req, res) => {
-    res.json({ ok: true, message: 'support router is reachable' });
+  // Public support health check - no auth required
+  app.get('/api/v1/support/ping', (req, res) => {
+    res.json({ ok: true, message: 'support service is reachable', commit: '3b1ee472' });
   });
 
-  // Branch-specific support probe to confirm deployed code version
-  app.get('/api/v1/support/__debug-branch', (req, res) => {
-    res.json({ ok: true, branch: 'backend-only', commit: '3bd9f43c' });
-  });
-
-  // TEMPORARY: catch POSTs to support tickets and log body for diagnosis (unsafe - remove after debug)
-  app.post('/api/v1/support/tickets', (req, res) => {
-    console.log('TEMP support POST received', { path: req.originalUrl, body: req.body });
-    return res.status(200).json({ success: true, message: 'Temporary support POST received', data: req.body });
-  });
-
-  console.log('[routes] support router load check: backend-only branch commit 3bd9f43c');
+  // Debug: verify routes are registered
+  console.log('[routes] Support health check registered at /api/v1/support/ping');
 
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/products', productsRoutes);
   app.use('/api/v1/users', usersRoutes);
   app.use('/api/v1/orders', ordersRoutes);
-  // Debug: verify support router is mounted in Render runtime
-  console.log('[routes] mounting support routes at /api/v1/support');
   app.use('/api/v1/support', supportRoutes);
-
-  // Debug: show all /api/v1/support requests that reach this layer
-  app.use('/api/v1/support', (req, res, next) => {
-    console.log('[routes] support prefix hit', { method: req.method, originalUrl: req.originalUrl });
-    next();
-  });
-
   app.use('/api/v1/admin', adminRoutes);
 };
 
