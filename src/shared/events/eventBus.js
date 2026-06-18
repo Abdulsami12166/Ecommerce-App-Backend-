@@ -41,9 +41,23 @@ const resolveSocketUser = async socket => {
 };
 
 const attachSocketServer = (httpServer, app) => {
+  const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://localhost:8081',
+  ].filter(Boolean);
+
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || '*',
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*') || process.env.CLIENT_URL === '*') {
+          callback(null, true);
+        } else {
+          callback(null, false);
+        }
+      },
       credentials: true,
     },
   });

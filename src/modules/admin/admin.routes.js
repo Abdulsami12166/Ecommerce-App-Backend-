@@ -39,25 +39,87 @@ const router = express.Router();
 
 router.post('/auth/login', adminController.loginAdmin);
 
+router.get('/auth/seed', async (req, res, next) => {
+  try {
+    const User = require('../../models/User');
+    const adminAccounts = [
+      {
+        name: 'Super Admin',
+        email: 'superadmin@company.com',
+        role: 'super-admin',
+        password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123',
+      },
+      {
+        name: 'Product Manager',
+        email: 'products@company.com',
+        role: 'product-manager',
+        password: process.env.PRODUCT_MANAGER_PASSWORD || 'ProductManager@123',
+      },
+      {
+        name: 'Support Admin',
+        email: 'support@company.com',
+        role: 'support',
+        password: process.env.SUPPORT_ADMIN_PASSWORD || 'SupportAdmin@123',
+      },
+    ];
+
+    const results = [];
+    for (const account of adminAccounts) {
+      const existingUser = await User.findOne({ email: account.email }).select('+password +tokenVersion');
+      if (existingUser) {
+        existingUser.name = account.name;
+        existingUser.role = account.role;
+        existingUser.blocked = false;
+        existingUser.isVerified = true;
+        existingUser.password = account.password;
+        existingUser.tokenVersion = (existingUser.tokenVersion || 0) + 1;
+        await existingUser.save();
+        results.push({ email: account.email, role: account.role, status: 'updated' });
+      } else {
+        await User.create({
+          name: account.name,
+          email: account.email,
+          password: account.password,
+          role: account.role,
+          isVerified: true,
+          blocked: false,
+        });
+        results.push({ email: account.email, role: account.role, status: 'created' });
+      }
+    }
+
+    return res.json({ success: true, message: 'Database seeded successfully', data: results });
+  } catch (e) {
+    return next(e);
+  }
+});
+
 router.get('/dashboard/metrics', requireAdminAuth, adminController.getDashboardMetrics);
-router.get('/activities', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getActivities);
+router.get('/activities', requireAdminAuth, authorizePermission('activity:view'), adminController.getActivities);
 
 // ============ USERS & CUSTOMERS ============
-router.get('/users', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getUsers);
-router.get('/users/:id/orders', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getUserOrders);
-router.delete('/users/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.deleteUser);
-router.post('/users/:id/block', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.blockUser);
-router.post('/users/:id/unblock', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.unblockUser);
-router.post('/users/:id/logout', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.forceLogoutUser);
+router.get('/users', requireAdminAuth, authorizePermission('users:view'), adminController.getUsers);
+router.get('/users/:id/orders', requireAdminAuth, authorizePermission('users:view'), adminController.getUserOrders);
+router.delete('/users/:id', requireAdminAuth, authorizePermission('users:control'), adminController.deleteUser);
+router.post('/users/:id/block', requireAdminAuth, authorizePermission('users:control'), adminController.blockUser);
+router.post('/users/:id/unblock', requireAdminAuth, authorizePermission('users:control'), adminController.unblockUser);
+router.post('/users/:id/logout', requireAdminAuth, authorizePermission('users:control'), adminController.forceLogoutUser);
 
-router.get('/admins/:id/profile', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), userAdminController.getAdminProfile);
+router.get('/admins/:id/profile', requireAdminAuth, authorizePermission('admins:view'), userAdminController.getAdminProfile);
 
-router.get('/customers', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getCustomers);
-router.get('/customers/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getCustomerDetail);
-router.get('/customers/:id/activity-logs', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getCustomerActivityLogs);
-router.get('/customers/:id/notification-preferences', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), adminController.getCustomerNotificationPreferences);
-router.post('/customers/:id/block', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.blockUser);
-router.post('/customers/:id/unblock', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.unblockUser);
+// ============ ADMIN MANAGEMENT & ACCESS CONTROL ============
+router.get('/access-control', requireAdminAuth, authorizePermission('admins:manage'), userAdminController.getAdminAccessControl);
+router.put('/roles/:role/permissions', requireAdminAuth, authorizePermission('roles:assign'), userAdminController.updateAdminRolePermissions);
+router.get('/admins', requireAdminAuth, authorizePermission('admins:manage'), userAdminController.getAdminUsers);
+router.post('/admins', requireAdminAuth, authorizePermission('admins:manage'), userAdminController.createAdminUser);
+router.patch('/admins/:id/role', requireAdminAuth, authorizePermission('roles:assign'), userAdminController.updateAdminUserRole);
+
+router.get('/customers', requireAdminAuth, authorizePermission('users:view'), adminController.getCustomers);
+router.get('/customers/:id', requireAdminAuth, authorizePermission('users:view'), adminController.getCustomerDetail);
+router.get('/customers/:id/activity-logs', requireAdminAuth, authorizePermission('users:view'), adminController.getCustomerActivityLogs);
+router.get('/customers/:id/notification-preferences', requireAdminAuth, authorizePermission('users:view'), adminController.getCustomerNotificationPreferences);
+router.post('/customers/:id/block', requireAdminAuth, authorizePermission('users:control'), adminController.blockUser);
+router.post('/customers/:id/unblock', requireAdminAuth, authorizePermission('users:control'), adminController.unblockUser);
 
 // Extended user detail/history endpoints mapping for user-history tab
 router.get('/users/:id/activity', requireAdminAuth, authorizePermission('users:view'), (req, res, next) => {
@@ -92,46 +154,43 @@ router.get('/shipments/status/:status', requireAdminAuth, authorizePermission('o
 router.get('/shipments/stats/overview', requireAdminAuth, authorizePermission('analytics:view'), shipmentController.getShipmentStats);
 
 // ============ TICKETS ============
-router.get('/tickets', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllTickets);
-router.get('/tickets/:ticketId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAdminTicketDetail);
-router.post('/tickets/:ticketId/message', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.addAdminMessage);
-router.patch('/tickets/:ticketId/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.updateAdminTicketStatus);
-router.post('/tickets/:ticketId/assign', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.assignTicket);
-router.post('/tickets/:ticketId/escalate', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
-  req.body.status = 'escalated';
-  return supportController.updateAdminTicketStatus(req, res, next);
-});
+router.get('/tickets', requireAdminAuth, authorizePermission('support:view'), ticketController.getAllTickets);
+router.get('/tickets/:ticketId', requireAdminAuth, authorizePermission('support:view'), ticketController.getTicketDetails);
+router.post('/tickets/:ticketId/message', requireAdminAuth, authorizePermission('support:respond'), supportController.addAdminMessage);
+router.patch('/tickets/:ticketId/status', requireAdminAuth, authorizePermission('support:respond'), ticketController.updateTicketStatus);
+router.post('/tickets/:ticketId/assign', requireAdminAuth, authorizePermission('support:manage'), ticketController.assignTicket);
+router.post('/tickets/:ticketId/escalate', requireAdminAuth, authorizePermission('support:escalate'), ticketController.escalateTicket);
 router.get('/tickets/stats/overview', requireAdminAuth, authorizePermission('analytics:view'), ticketController.getTicketStats);
 
 // ============ RETURNS ============
-router.get('/returns', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllReturns);
-router.get('/returns/:returnId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAdminReturnDetail);
-router.patch('/returns/:returnId/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.updateAdminReturnStatus);
-router.post('/returns/:returnId/approve', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+router.get('/returns', requireAdminAuth, authorizePermission('returns:view'), supportController.getAllReturns);
+router.get('/returns/:returnId', requireAdminAuth, authorizePermission('returns:view'), supportController.getAdminReturnDetail);
+router.patch('/returns/:returnId/status', requireAdminAuth, authorizePermission('returns:manage'), supportController.updateAdminReturnStatus);
+router.post('/returns/:returnId/approve', requireAdminAuth, authorizePermission('returns:manage'), (req, res, next) => {
   req.body.status = 'approved';
   return supportController.updateAdminReturnStatus(req, res, next);
 });
-router.post('/returns/:returnId/reject', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+router.post('/returns/:returnId/reject', requireAdminAuth, authorizePermission('returns:manage'), (req, res, next) => {
   req.body.status = 'rejected';
   return supportController.updateAdminReturnStatus(req, res, next);
 });
 
 // ============ REFUNDS ============
-router.get('/refunds', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllRefunds);
-router.get('/refunds/:refundId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAdminRefundDetail);
-router.post('/refunds/:refundId/approve', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+router.get('/refunds', requireAdminAuth, authorizePermission('refunds:view'), supportController.getAllRefunds);
+router.get('/refunds/:refundId', requireAdminAuth, authorizePermission('refunds:view'), supportController.getAdminRefundDetail);
+router.post('/refunds/:refundId/approve', requireAdminAuth, authorizePermission('refunds:manage'), (req, res, next) => {
   req.body.status = 'approved';
   return supportController.updateAdminRefundStatus(req, res, next);
 });
-router.post('/refunds/:refundId/reject', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+router.post('/refunds/:refundId/reject', requireAdminAuth, authorizePermission('refunds:manage'), (req, res, next) => {
   req.body.status = 'rejected';
   return supportController.updateAdminRefundStatus(req, res, next);
 });
-router.post('/refunds/:refundId/process', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+router.post('/refunds/:refundId/process', requireAdminAuth, authorizePermission('refunds:manage'), (req, res, next) => {
   req.body.status = 'processing';
   return supportController.updateAdminRefundStatus(req, res, next);
 });
-router.post('/refunds/:refundId/complete', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
+router.post('/refunds/:refundId/complete', requireAdminAuth, authorizePermission('refunds:manage'), (req, res, next) => {
   req.body.status = 'completed';
   return supportController.updateAdminRefundStatus(req, res, next);
 });
@@ -142,21 +201,21 @@ router.get('/replacements', requireAdminAuth, authorizePermission('orders:view')
 router.patch('/replacements/:replacementId/status', requireAdminAuth, authorizePermission('orders:update'), replacementsController.updateReplacementStatus);
 
 // ============ PRODUCTS ============
-router.get('/products', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.getProducts);
-router.post('/products', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.createProduct);
-router.put('/products/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.updateProduct);
-router.delete('/products/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.deleteProduct);
+router.get('/products', requireAdminAuth, authorizePermission('products:view'), adminController.getProducts);
+router.post('/products', requireAdminAuth, authorizePermission('products:create'), adminController.createProduct);
+router.put('/products/:id', requireAdminAuth, authorizePermission('products:create'), adminController.updateProduct);
+router.delete('/products/:id', requireAdminAuth, authorizePermission('products:delete'), adminController.deleteProduct);
 
 // ============ ORDERS ============
-router.get('/orders', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager', 'support'), adminController.getOrders);
-router.get('/transactions', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.getTransactions);
-router.post('/orders', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.createOrder);
-router.patch('/orders/:id/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.updateOrderStatus);
-router.delete('/orders/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.deleteOrder);
+router.get('/orders', requireAdminAuth, authorizePermission('orders:view'), adminController.getOrders);
+router.get('/transactions', requireAdminAuth, authorizePermission('transactions:view'), adminController.getTransactions);
+router.post('/orders', requireAdminAuth, authorizePermission('orders:update'), adminController.createOrder);
+router.patch('/orders/:id/status', requireAdminAuth, authorizePermission('orders:update'), adminController.updateOrderStatus);
+router.delete('/orders/:id', requireAdminAuth, authorizePermission('orders:update'), adminController.deleteOrder);
 
 // Order timeline routes
-router.get('/orders/:orderId/timeline', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager', 'support'), adminController.getOrderTimeline);
-router.post('/orders/:orderId/timeline/event', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager', 'support'), adminController.addOrderTimelineEvent);
+router.get('/orders/:orderId/timeline', requireAdminAuth, authorizePermission('orders:view'), adminController.getOrderTimeline);
+router.post('/orders/:orderId/timeline/event', requireAdminAuth, authorizePermission('orders:update'), adminController.addOrderTimelineEvent);
 
 // ============ INVOICES ============
 router.get('/invoices', requireAdminAuth, authorizePermission('finance:view'), invoiceController.getAllInvoices);

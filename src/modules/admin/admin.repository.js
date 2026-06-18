@@ -3,6 +3,10 @@ const Product = require('../../models/Product');
 const User = require('../../models/User');
 const UserActivity = require('../../models/UserActivity');
 
+// Lazy-load optional models safely
+const tryRequire = name => { try { return require(name); } catch (_e) { return null; } };
+
+
 const adminRepository = {
   countUsers: filter => User.countDocuments(filter || {}),
   countOrders: filter => Order.countDocuments(filter || {}),
@@ -85,7 +89,7 @@ const adminRepository = {
       .populate('wishlist', 'title price discountedPrice images stock'),
   saveUser: user => user.save(),
   deleteUser: user => user.deleteOne(),
-  getOrdersByUserId: userId => Order.find({ user: userId }).sort({ createdAt: -1 }),
+  getOrdersByUserId: userId => Order.find({ user: userId }).populate('address').sort({ createdAt: -1 }),
   getActivitiesByUserId: (userId, { page = 1, limit = 50, actions } = {}) => {
     const filter = { user: userId };
     if (actions?.length) filter.action = { $in: actions };
@@ -110,6 +114,16 @@ const adminRepository = {
   createOrder: payload => Order.create(payload),
   saveOrder: order => order.save(),
   deleteOrder: order => order.deleteOne(),
+  countRefunds: async ({ userId } = {}) => {
+    const RefundRequest = tryRequire('../../models/RefundRequest');
+    if (!RefundRequest) return 0;
+    return RefundRequest.countDocuments({ user: userId });
+  },
+  countTickets: async ({ userId } = {}) => {
+    const SupportTicket = tryRequire('../../models/SupportTicket');
+    if (!SupportTicket) return 0;
+    return SupportTicket.countDocuments({ user: userId });
+  },
 };
 
 module.exports = { adminRepository };

@@ -144,10 +144,12 @@ const getCustomers = async query => {
 const getCustomerDetail = async userId => {
   const user = await adminRepository.getCustomerById(userId);
   if (!user) throw new AppError('Customer not found', 404);
-  const [summary, orders, activityLogs] = await Promise.all([
+  const [summary, orders, activityLogs, refundCount, ticketCount] = await Promise.all([
     buildCustomerSummary(user),
     adminRepository.getOrdersByUserId(userId),
     adminRepository.getActivitiesByUserId(userId, { limit: 20 }),
+    adminRepository.countRefunds({ userId }),
+    adminRepository.countTickets({ userId }),
   ]);
 
   const orderList = orders.map(order => ({
@@ -186,8 +188,8 @@ const getCustomerDetail = async userId => {
       ordersPlaced: orderList.length,
       ordersCancelled: orderList.filter(order => order.orderStatus === 'cancelled').length,
       ordersReturned: orderList.filter(order => order.orderStatus === 'returned').length,
-      refundRequests: [],
-      ticketsRaised: [],
+      refundRequests: Array.from({ length: refundCount }),
+      ticketsRaised: Array.from({ length: ticketCount }),
       chatHistory: [],
       cartActivity: [],
       notificationHistory: [],

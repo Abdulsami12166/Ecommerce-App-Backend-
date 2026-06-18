@@ -29,7 +29,7 @@ exports.getAllTickets = async (req, res) => {
 
     res.json({
       success: true,
-      data: tickets,
+      data: { tickets },
       pagination: {
         total,
         page: parseInt(page),
@@ -59,7 +59,7 @@ exports.getTicketDetails = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Ticket not found' });
     }
 
-    res.json({ success: true, data: ticket });
+    res.json({ success: true, data: { ticket } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -384,9 +384,11 @@ exports.getTicketStats = async (req, res) => {
     res.json({
       success: true,
       data: {
-        ...stats[0],
-        total,
-        avgRating: avgRating[0]?.avgRating?.toFixed(2) || 0
+        stats: {
+          ...stats[0],
+          total,
+          avgRating: avgRating[0]?.avgRating?.toFixed(2) || 0
+        }
       }
     });
   } catch (error) {
