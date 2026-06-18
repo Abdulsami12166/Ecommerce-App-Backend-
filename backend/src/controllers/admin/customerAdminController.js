@@ -57,16 +57,40 @@ exports.getCustomerDetails = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const customer = await User.findById(userId).select('-password');
-    if (!customer) {
+    const customerDoc = await User.findById(userId).select('-password');
+    if (!customerDoc) {
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
+    
+    // Convert to plain object to attach new properties
+    const customer = customerDoc.toObject();
 
     const activityLogs = await UserActivity.find({ user: userId })
       .sort('-createdAt')
       .limit(50);
 
     const preferences = await NotificationPreference.findOne({ user: userId });
+
+    // Fetch metrics
+    const Order = require('../../models/Order');
+    const RefundRequest = require('../../models/RefundRequest');
+    const SupportTicket = require('../../models/SupportTicket');
+
+    const [ordersPlaced, ordersCancelled, ordersReturned, refundRequests, ticketsRaised] = await Promise.all([
+      Order.countDocuments({ user: userId }),
+      Order.countDocuments({ user: userId, orderStatus: 'cancelled' }),
+      Order.countDocuments({ user: userId, orderStatus: 'returned' }),
+      RefundRequest ? RefundRequest.countDocuments({ user: userId }) : Promise.resolve(0),
+      SupportTicket ? SupportTicket.countDocuments({ user: userId }) : Promise.resolve(0),
+    ]);
+
+    customer.ordersPlaced = ordersPlaced;
+    customer.ordersCancelled = ordersCancelled;
+    customer.ordersReturned = ordersReturned;
+    customer.refundRequests = Array(refundRequests).fill({});
+    customer.ticketsRaised = Array(ticketsRaised).fill({});
+    customer.addresses = [];
+    customer.wishlist = [];
 
     res.json({
       success: true,
