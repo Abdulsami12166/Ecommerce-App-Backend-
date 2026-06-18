@@ -42,6 +42,11 @@ router.post('/auth/login', adminController.loginAdmin);
 router.get('/auth/seed', async (req, res, next) => {
   try {
     const User = require('../../models/User');
+    const RolePermission = require('../../models/RolePermission');
+    
+    // Clear customized role permissions so it falls back to DEFAULT_ROLE_PERMISSIONS
+    await RolePermission.deleteMany({});
+
     const adminAccounts = [
       {
         name: 'Super Admin',
