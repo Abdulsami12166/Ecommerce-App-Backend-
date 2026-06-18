@@ -57,7 +57,7 @@ exports.getCustomerDetails = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const customerDoc = await User.findById(userId).select('-password');
+    const customerDoc = await User.findById(userId).select('-password').populate('wishlist');
     if (!customerDoc) {
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
