@@ -17,10 +17,7 @@ const ticketsRepository = {
       .populate('order', 'orderStatus totalAmount createdAt')
       .populate('assignedTo', 'name email'),
   getTicketsByUserId: userId =>
-    SupportTicket.find({ user: userId })
-      .sort({ createdAt: -1 })
-      .populate('order', 'orderStatus totalAmount createdAt')
-      .populate('assignedTo', 'name email'),
+    SupportTicket.find({ user: userId }).sort({ createdAt: -1 }).populate('order', 'orderStatus totalAmount createdAt').populate('assignedTo', 'name email'),
   saveTicket: ticket => ticket.save(),
   countTickets: filter => SupportTicket.countDocuments(filter || {}),
   aggregateTicketStats: () =>
@@ -87,18 +84,14 @@ const refundsRepository = {
       .populate('user', 'name email')
       .populate('order', 'orderStatus totalAmount createdAt'),
   getRefundRequestById: refundId =>
-    RefundRequest.findById(refundId)
-      .populate('user', 'name email')
-      .populate('order', 'orderStatus totalAmount createdAt'),
+    RefundRequest.findById(refundId).populate('user', 'name email').populate('order', 'orderStatus totalAmount createdAt'),
   saveRefundRequest: refundRequest => refundRequest.save(),
   updateRefundStatus: async (refundId, status, notes, paymentDetails) => {
     const refund = await RefundRequest.findById(refundId);
     if (!refund) throw new Error('Refund request not found');
     refund.status = status;
     if (notes !== undefined) refund.notes = notes;
-    if (paymentDetails) {
-      refund.paymentDetails = { ...(refund.paymentDetails?.toObject?.() || {}), ...paymentDetails };
-    }
+    if (paymentDetails) refund.paymentDetails = { ...(refund.paymentDetails?.toObject?.() || {}), ...paymentDetails };
     return await refund.save();
   },
   countRefundRequests: filter => RefundRequest.countDocuments(filter || {}),
@@ -116,4 +109,3 @@ module.exports = {
     getOrderById: orderId => Order.findById(orderId),
   },
 };
-

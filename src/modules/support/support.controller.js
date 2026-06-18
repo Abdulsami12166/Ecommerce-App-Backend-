@@ -10,7 +10,9 @@ const supportController = {
       const { category, subject, description, email, priority, orderId, attachments } = req.body;
       const userId = String(req.user._id || req.user.id);
 
+      // Ensure email exists (some clients don't send it)
       const safeEmail = email || req.user?.email || undefined;
+
 
       if (!category || !subject || !description || !priority) {
         return sendErrorResponse(res, 'All fields are required', 400);
@@ -44,6 +46,7 @@ const supportController = {
 
       const ticket = await ticketsRepository.createTicket(ticketPayload);
 
+      // Emit socket event for admin notification
       emitToAdmins(req.app, socketEvents.DOMAIN.TICKET_CREATED, {
         ticketId: ticket._id,
         orderId: ticket.order,
@@ -82,11 +85,124 @@ const supportController = {
         return sendErrorResponse(res, 'Ticket not found', 404);
       }
 
+      // Verify ticket belongs to user
       if (String(ticket.user?._id || ticket.user) !== userId) {
         return sendErrorResponse(res, 'Unauthorized', 403);
       }
 
       return sendSuccessResponse(res, { ticket }, 'Ticket fetched successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  // Create refund request
+  createRefundRequest: async (req, res) => {
+    try {
+      const { orderId, itemIds, reason, comments } = req.body;
+      const userId = String(req.user._id || req.user.id);
+
+      if (!orderId || !itemIds || !reason || !comments) {
+        return sendErrorResponse(res, 'All fields are required', 400);
+      }
+
+      const order = await ordersRepository.getOrderById(orderId);
+      if (!order || String(order.user) !== userId) {
+        return sendErrorResponse(res, 'Order not found for this customer', 404);
+      }
+
+      const selectedItems = Array.isArray(itemIds) && itemIds.length
+        ? order.items.filter(item => itemIds.includes(String(item.product)) || itemIds.includes(String(item._id)))
+        : order.items;
+      const productAmount = selectedItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
+
+      const refundPayload = {
+        user: userId,
+        order: orderId,
+        reason: normalizeRefundReason(reason),
+        refundType: selectedItems.length === order.items.length ? 'full' : 'partial',
+        refundAmount: productAmount,
+        refundBreakdown: { productAmount },
+        notes: comments,
+        status: 'initiated',
+      };
+
+      const refund = await refundsRepository.createRefundRequest(refundPayload);
+
+      // Emit socket event for admin notification
+      emitToAdmins(req.app, socketEvents.DOMAIN.REFUND_CREATED, {
+        refundId: refund._id,
+        orderId: refund.order,
+        userId,
+        reason: refund.reason,
+        status: refund.status,
+      });
+
+      return sendSuccessResponse(res, { refund }, 'Refund request created successfully', 201);
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  // Get user's refunds
+  getUserRefunds: async (req, res) => {
+    try {
+      const userId = String(req.user._id || req.user.id);
+      const refunds = await refundsRepository.getRefundRequests({ user: userId });
+      return sendSuccessResponse(res, { refunds }, 'Refunds fetched successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  // Get single refund detail
+  getRefundDetail: async (req, res) => {
+    try {
+      const { refundId } = req.params;
+      const userId = String(req.user._id || req.user.id);
+
+      const refund = await refundsRepository.getRefundRequestById(refundId);
+
+      if (!refund) {
+        return sendErrorResponse(res, 'Refund request not found', 404);
+      }
+
+      // Verify refund belongs to user
+      if (String(refund.user?._id || refund.user) !== userId) {
+        return sendErrorResponse(res, 'Unauthorized', 403);
+      }
+
+      return sendSuccessResponse(res, { refund }, 'Refund fetched successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  // Get all tickets (admin)
+  getAllTickets: async (req, res) => {
+    try {
+      const { status, priority, category, orderId } = req.query;
+      const filter = {};
+      if (status) filter.status = status;
+      if (priority) filter.priority = priority;
+      if (category) filter.category = category;
+      if (orderId) filter.order = orderId;
+      const tickets = await ticketsRepository.getTickets(filter);
+      return sendSuccessResponse(res, { tickets }, 'All tickets fetched successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  // Get all refunds (admin)
+  getAllRefunds: async (req, res) => {
+    try {
+      const { status, orderId } = req.query;
+      const filter = {};
+      if (status) filter.status = status;
+      if (orderId) filter.order = orderId;
+      const refunds = await refundsRepository.getRefundRequests(filter);
+      return sendSuccessResponse(res, { refunds }, 'All refunds fetched successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
     }
@@ -108,6 +224,7 @@ const supportController = {
         return sendErrorResponse(res, 'Ticket not found', 404);
       }
 
+      // Verify ticket belongs to user
       if (String(ticket.user?._id || ticket.user) !== userId) {
         return sendErrorResponse(res, 'Unauthorized', 403);
       }
@@ -120,6 +237,7 @@ const supportController = {
 
       const updatedTicket = await ticketsRepository.addMessageToTicket(ticketId, messagePayload);
 
+      // Emit socket event for admin notification
       emitToAdmins(req.app, socketEvents.DOMAIN.TICKET_MESSAGE_ADDED, {
         ticketId: updatedTicket._id,
         orderId: updatedTicket.order,
@@ -154,12 +272,14 @@ const supportController = {
         return sendErrorResponse(res, 'Ticket not found', 404);
       }
 
+      // Verify ticket belongs to user
       if (String(ticket.user?._id || ticket.user) !== userId) {
         return sendErrorResponse(res, 'Unauthorized', 403);
       }
 
       const updatedTicket = await ticketsRepository.updateTicketStatus(ticketId, status);
 
+      // Emit socket event for real-time sync
       emitToUser(req.app, userId, socketEvents.DOMAIN.TICKET_UPDATED, {
         ticketId: updatedTicket._id,
         orderId: updatedTicket.order,
@@ -172,86 +292,6 @@ const supportController = {
     }
   },
 
-  // Create refund request
-  createRefundRequest: async (req, res) => {
-    try {
-      const { orderId, itemIds, reason, comments } = req.body;
-      const userId = String(req.user._id || req.user.id);
-
-      if (!orderId || !itemIds || !reason || !comments) {
-        return sendErrorResponse(res, 'All fields are required', 400);
-      }
-
-      const order = await ordersRepository.getOrderById(orderId);
-      if (!order || String(order.user) !== userId) {
-        return sendErrorResponse(res, 'Order not found for this customer', 404);
-      }
-
-      const selectedItems = Array.isArray(itemIds) && itemIds.length
-        ? order.items.filter(item => itemIds.includes(String(item.product)) || itemIds.includes(String(item._id)))
-        : order.items;
-
-      const productAmount = selectedItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
-
-      const refundPayload = {
-        user: userId,
-        order: orderId,
-        reason: normalizeRefundReason(reason),
-        refundType: selectedItems.length === order.items.length ? 'full' : 'partial',
-        refundAmount: productAmount,
-        refundBreakdown: { productAmount },
-        notes: comments,
-        status: 'initiated',
-      };
-
-      const refund = await refundsRepository.createRefundRequest(refundPayload);
-
-      emitToAdmins(req.app, socketEvents.DOMAIN.REFUND_CREATED, {
-        refundId: refund._id,
-        orderId: refund.order,
-        userId,
-        reason: refund.reason,
-        status: refund.status,
-      });
-
-      return sendSuccessResponse(res, { refund }, 'Refund request created successfully', 201);
-    } catch (error) {
-      return sendErrorResponse(res, error.message, 500);
-    }
-  },
-
-  getUserRefunds: async (req, res) => {
-    try {
-      const userId = String(req.user._id || req.user.id);
-      const refunds = await refundsRepository.getRefundRequests({ user: userId });
-      return sendSuccessResponse(res, { refunds }, 'Refunds fetched successfully');
-    } catch (error) {
-      return sendErrorResponse(res, error.message, 500);
-    }
-  },
-
-  getRefundDetail: async (req, res) => {
-    try {
-      const { refundId } = req.params;
-      const userId = String(req.user._id || req.user.id);
-
-      const refund = await refundsRepository.getRefundRequestById(refundId);
-
-      if (!refund) {
-        return sendErrorResponse(res, 'Refund request not found', 404);
-      }
-
-      if (String(refund.user?._id || refund.user) !== userId) {
-        return sendErrorResponse(res, 'Unauthorized', 403);
-      }
-
-      return sendSuccessResponse(res, { refund }, 'Refund fetched successfully');
-    } catch (error) {
-      return sendErrorResponse(res, error.message, 500);
-    }
-  },
-
-  // Return request routes
   createReturnRequest: async (req, res) => {
     try {
       const { orderId, returnItems, reason, comments, pickupAddress, images } = req.body;
@@ -266,14 +306,12 @@ const supportController = {
         return sendErrorResponse(res, 'Order not found for this customer', 404);
       }
 
-      const normalizedItems = returnItems
-        .map(item => ({
-          product: item.product || item.productId,
-          quantity: item.quantity || 1,
-          reason: item.reason || reason || 'Not specified',
-          condition: item.condition || 'Good',
-        }))
-        .filter(item => item.product);
+      const normalizedItems = returnItems.map(item => ({
+        product: item.product || item.productId,
+        quantity: item.quantity || 1,
+        reason: item.reason || reason || 'Not specified',
+        condition: item.condition || 'Good',
+      })).filter(item => item.product);
 
       if (!normalizedItems.length) {
         return sendErrorResponse(res, 'At least one return item is required', 400);
@@ -325,32 +363,122 @@ const supportController = {
     }
   },
 
-  // Admin: list tickets/refunds
-  getAllTickets: async (req, res) => {
-    try {
-      const { status, priority, category, orderId } = req.query;
-      const filter = {};
-      if (status) filter.status = status;
-      if (priority) filter.priority = priority;
-      if (category) filter.category = category;
-      if (orderId) filter.order = orderId;
-
-      const tickets = await ticketsRepository.getTickets(filter);
-      return sendSuccessResponse(res, { tickets }, 'All tickets fetched successfully');
-    } catch (error) {
-      return sendErrorResponse(res, error.message, 500);
-    }
-  },
-
-  getAllRefunds: async (req, res) => {
+  getAllReturns: async (req, res) => {
     try {
       const { status, orderId } = req.query;
       const filter = {};
       if (status) filter.status = status;
       if (orderId) filter.order = orderId;
+      const returns = await returnsRepository.getReturnRequests(filter);
+      return sendSuccessResponse(res, { returns }, 'All return requests fetched successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
 
-      const refunds = await refundsRepository.getRefundRequests(filter);
-      return sendSuccessResponse(res, { refunds }, 'All refunds fetched successfully');
+  getAdminTicketDetail: async (req, res) => {
+    try {
+      const ticket = await ticketsRepository.getTicketById(req.params.ticketId);
+      if (!ticket) return sendErrorResponse(res, 'Ticket not found', 404);
+      return sendSuccessResponse(res, { ticket }, 'Ticket fetched successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  addAdminMessage: async (req, res) => {
+    try {
+      const { message, attachments } = req.body;
+      if (!message || !message.trim()) return sendErrorResponse(res, 'Message is required', 400);
+      const ticket = await ticketsRepository.getTicketById(req.params.ticketId);
+      if (!ticket) return sendErrorResponse(res, 'Ticket not found', 404);
+
+      const messagePayload = {
+        senderType: 'admin',
+        sender: req.user._id,
+        message: message.trim(),
+        attachments: Array.isArray(attachments) ? attachments : [],
+      };
+      const updatedTicket = await ticketsRepository.addMessageToTicket(req.params.ticketId, messagePayload);
+      updatedTicket.status = 'waiting_customer';
+      await ticketsRepository.saveTicket(updatedTicket);
+
+      const payload = { ticketId: updatedTicket._id, orderId: updatedTicket.order, message: messagePayload };
+      emitToAdmins(req.app, socketEvents.DOMAIN.TICKET_MESSAGE_ADDED, payload);
+      emitToUser(req.app, updatedTicket.user, socketEvents.DOMAIN.TICKET_MESSAGE_ADDED, payload);
+      return sendSuccessResponse(res, { ticket: updatedTicket }, 'Message added successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  updateAdminTicketStatus: async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status) return sendErrorResponse(res, 'Status is required', 400);
+      const updatedTicket = await ticketsRepository.updateTicketStatus(req.params.ticketId, status);
+      const payload = { ticketId: updatedTicket._id, orderId: updatedTicket.order, status: updatedTicket.status };
+      emitToAdmins(req.app, socketEvents.DOMAIN.TICKET_UPDATED, payload);
+      emitToUser(req.app, updatedTicket.user, socketEvents.DOMAIN.TICKET_UPDATED, payload);
+      return sendSuccessResponse(res, { ticket: updatedTicket }, 'Ticket status updated successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  assignTicket: async (req, res) => {
+    try {
+      const ticket = await ticketsRepository.assignTicket(req.params.ticketId, req.body.adminId || req.user._id);
+      emitToAdmins(req.app, socketEvents.DOMAIN.TICKET_UPDATED, { ticketId: ticket._id, orderId: ticket.order, assignedTo: ticket.assignedTo });
+      return sendSuccessResponse(res, { ticket }, 'Ticket assigned successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  getAdminReturnDetail: async (req, res) => {
+    try {
+      const returnRequest = await returnsRepository.getReturnRequestById(req.params.returnId);
+      if (!returnRequest) return sendErrorResponse(res, 'Return request not found', 404);
+      return sendSuccessResponse(res, { returnRequest }, 'Return request fetched successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  updateAdminReturnStatus: async (req, res) => {
+    try {
+      const { status, notes, reason } = req.body;
+      if (!status) return sendErrorResponse(res, 'Status is required', 400);
+      const returnRequest = await returnsRepository.updateReturnStatus(req.params.returnId, status, notes, reason);
+      const payload = { returnId: returnRequest._id, orderId: returnRequest.order, status: returnRequest.status };
+      emitToAdmins(req.app, socketEvents.DOMAIN.RETURN_UPDATED, payload);
+      emitToUser(req.app, returnRequest.user, socketEvents.DOMAIN.RETURN_UPDATED, payload);
+      return sendSuccessResponse(res, { returnRequest }, 'Return status updated successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  getAdminRefundDetail: async (req, res) => {
+    try {
+      const refund = await refundsRepository.getRefundRequestById(req.params.refundId);
+      if (!refund) return sendErrorResponse(res, 'Refund request not found', 404);
+      return sendSuccessResponse(res, { refund }, 'Refund fetched successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  updateAdminRefundStatus: async (req, res) => {
+    try {
+      const { status, notes, paymentDetails } = req.body;
+      if (!status) return sendErrorResponse(res, 'Status is required', 400);
+      const refund = await refundsRepository.updateRefundStatus(req.params.refundId, status, notes, paymentDetails);
+      const payload = { refundId: refund._id, orderId: refund.order, status: refund.status };
+      emitToAdmins(req.app, socketEvents.DOMAIN.REFUND_UPDATED, payload);
+      emitToUser(req.app, refund.user, socketEvents.DOMAIN.REFUND_UPDATED, payload);
+      return sendSuccessResponse(res, { refund }, 'Refund status updated successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
     }
@@ -364,8 +492,8 @@ const normalizePriority = priority => {
   return ['low', 'medium', 'high', 'critical'].includes(normalized) ? normalized : 'medium';
 };
 
-const normalizeRefundReason = reason =>
-  ['return', 'cancellation', 'complaint', 'duplicate_charge', 'other'].includes(reason) ? reason : 'other';
+const normalizeRefundReason = reason => (
+  ['return', 'cancellation', 'complaint', 'duplicate_charge', 'other'].includes(reason) ? reason : 'other'
+);
 
 module.exports = supportController;
-
