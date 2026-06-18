@@ -48,7 +48,10 @@ exports.getAllInventory = async (req, res) => {
     }
 
     if (lowStock === 'true') {
-      query.$expr = { $lte: ['$currentStock', '$reorderLevel'] };
+      query.$or = [
+        { lowStockAlert: true },
+        { $expr: { $lte: ['$currentStock', '$reorderLevel'] } }
+      ];
     }
 
     const total = await Inventory.countDocuments(query);
@@ -175,7 +178,10 @@ exports.getLowStockProducts = async (req, res) => {
     const { limit = 50 } = req.query;
 
     const lowStockItems = await Inventory.find({
-      $expr: { $lte: ['$currentStock', '$reorderLevel'] }
+      $or: [
+        { lowStockAlert: true },
+        { $expr: { $lte: ['$currentStock', '$reorderLevel'] } }
+      ]
     })
       .populate('product', 'title sku category price')
       .limit(parseInt(limit))
