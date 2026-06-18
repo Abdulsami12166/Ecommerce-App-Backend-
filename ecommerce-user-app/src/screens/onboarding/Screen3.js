@@ -24,9 +24,6 @@ const ProgressDots = () => (
     <View style={styles.dot} />
     <View style={[styles.dot, styles.dotActive]} />
   </View>
-  // <view>
-  //   <text>helloooo worlddd</text>
-  // </view>
 )
 
 const Screen3 = ({ navigation }) => {
@@ -65,7 +62,6 @@ const Screen3 = ({ navigation }) => {
           <View style={[styles.routeDot, styles.routeDotMid]} />
           <View style={[styles.routeDot, styles.routeDotBottom]} />
         </View>
-//showing demo mapppp
         <View style={styles.timelineCard}>
           {deliverySteps.map(step => (
             <View key={step.id} style={styles.stepRow}>

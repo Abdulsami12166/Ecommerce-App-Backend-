@@ -1,10 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   Alert,
   RefreshControl,
@@ -49,7 +48,7 @@ const ReturnTrackingScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadReturnDetail = async () => {
+  const loadReturnDetail = useCallback(async () => {
     setLoading(true);
     try {
       const response = await returnApi.getReturnById(returnId, authToken);
@@ -60,7 +59,7 @@ const ReturnTrackingScreen = ({ navigation, route }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [returnId, authToken]);
 
   useEffect(() => {
     loadReturnDetail();
@@ -73,7 +72,7 @@ const ReturnTrackingScreen = ({ navigation, route }) => {
     });
 
     return () => unsubscribe();
-  }, [returnId]);
+  }, [loadReturnDetail, returnId]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -22,16 +22,22 @@ const quickReplies = [
 const SupportChatScreen = ({ navigation, route }) => {
   const { supportChats, addChatMessage } = useAppStore();
   const [draftMessage, setDraftMessage] = useState('');
-  // const temp = setInterval(() => {
-  //   console.log('hello')
-  // }, 1000);
-  //const [temp , settemp] = useState(0)
-  // const chat = supportChats.find(item => item.id === route.params?.chatId) || supportChats[0];
 
   const chat = useMemo(
     () => supportChats.find(item => item.id === route.params?.chatId) || supportChats[0] || null,
     [route.params?.chatId, supportChats],
   );
+
+  const otherChats = useMemo(
+    () => supportChats.filter(item => item.id !== chat?.id && item.productId === chat?.productId),
+    [chat?.id, chat?.productId, supportChats],
+  );
+
+  const orderedMessages = useMemo(
+    () => [...(chat?.messages ?? [])].sort((a, b) => a.timestamp - b.timestamp),
+    [chat?.messages],
+  );
+
   if (!chat) {
     return (
       <SafeAreaView style={styles.container}>
@@ -44,20 +50,6 @@ const SupportChatScreen = ({ navigation, route }) => {
       </SafeAreaView>
     );
   }
-  const otherChats = useMemo(
-    () => supportChats.filter(item => item.id !== chat.id && item.productId === chat.productId),
-    [chat.id, chat.productId, supportChats],
-  );
-// const otherChats = s
-// upportChats.filter
-// (item => item.id !== chat.id)
-// const orderedMessages =
-//  [...chat.messages].sort((a, b) => a.timestamp -
-//  b.timestamp);
-  const orderedMessages = useMemo(
-    () => [...chat.messages].sort((a, b) => a.timestamp - b.timestamp),
-    [chat.messages],
-  );
 
   const handleSendMessage = () => {
     if (!draftMessage.trim()) {
@@ -71,7 +63,6 @@ const SupportChatScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* rightLabel={chat.status} */}
         <ScreenHeader
           title={chat.name}
           onBack={() => navigation.goBack()}
@@ -91,7 +82,6 @@ const SupportChatScreen = ({ navigation, route }) => {
             style={styles.actionButton}
             onPress={() => navigation.navigate('SupportChat', { chatId: chat.id })}
           >
-            {/* //setFrom(()=>({ ...current, title: value })) */}
             <Text style={styles.actionIcon}>S</Text>
             <Text style={styles.actionLabel}>SMS</Text>
           </TouchableOpacity>
@@ -110,15 +100,7 @@ const SupportChatScreen = ({ navigation, route }) => {
             <Text style={styles.actionLabel}>Video</Text>
           </TouchableOpacity>
         </View>
-        {/*
-          // map(() => {
-          //   flag+1
-          // }) if(supportChats.length === 0){
-          //   setInterval(() => {
-          //     console.log('hello')
-          //   }, 1000);
-          // }
-        */}
+
         <TouchableOpacity style={styles.backToChats} onPress={() => navigation.navigate('Support')}>
           <Text style={styles.backToChatsText}>View all owner chats</Text>
         </TouchableOpacity>
@@ -134,9 +116,7 @@ const SupportChatScreen = ({ navigation, route }) => {
                 <View style={[styles.orderChatAvatar, { backgroundColor: item.accent }]}>
                   <Text style={styles.orderChatAvatarText}>{item.name.charAt(0)}</Text>
                 </View> 
-                {/* //view style={styles.orderChatAvatar, { backgroundColor: item.accent }} --- IGNORE ---
-                //Text style={styles.orderChatAvatarText} --- IGNORE ---
-                //{item.name.charAt(0)} --- IGNORE --- */}
+
                 <View style={styles.orderChatBody}>
                   <Text style={styles.orderChatName}>{item.name}</Text>
                   <Text numberOfLines={1} style={styles.orderChatRole}>{item.role}</Text>
@@ -148,7 +128,7 @@ const SupportChatScreen = ({ navigation, route }) => {
                   style={styles.orderChatAction}
                   onPress={() => navigation.navigate('SupportCall', { chatId: item.id, mode: 'voice' })}
                 >
-                  {/* // setFrom(()=>({ ...current, title: value })) */}
+
                   <Text style={styles.orderChatActionIcon}>C</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -173,15 +153,7 @@ const SupportChatScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           ))}
         </View>
-        {/*
-          // map(() => {
-          //   flag+1
-          // }) if(chat.messages.length === 0){
-          //   setInterval(() => {
-          //     console.log('hello')
-          //   }, 1000);
-          // }
-        */}
+
 
         <View style={styles.chatCard}>
           {orderedMessages.map(message => (
@@ -213,12 +185,6 @@ const SupportChatScreen = ({ navigation, route }) => {
           placeholderTextColor={colors.textMuted}
           style={styles.chatInput}
           multiline
-          // onContentSizeChange={event => {
-          //   const { contentSize } = event.nativeEvent;
-          //   if (contentSize.height < 110) {
-          //     setInputHeight(contentSize.height);
-          //   }
-          // }}
         />
         <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
           <Text style={styles.sendButtonText}>Send</Text>
@@ -235,10 +201,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     alignItems: 'center',
     padding: spacing.lg,
-    // backgroundColor: 'red',
-    // backgroundColor: colors.surface,
     borderWidth: 1,
-    // borderColor: colors.border,
     borderRadius: 28,
     backgroundColor: colors.primary,
   },
@@ -247,8 +210,6 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     alignItems: 'center',
-    // justifyContent: 'center',
-    // backgroundColor: colors.primary,
     justifyContent: 'center',
     backgroundColor: colors.primarySoft,
   },
@@ -260,8 +221,6 @@ const styles = StyleSheet.create({
   name: {
     marginTop: spacing.md,
     color: colors.surface,
-    // backgroundColor: 'red',
-    // padding: spacing.sm,
     fontSize: 22,
     fontWeight: '800',
   },
@@ -279,9 +238,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
-    // borderWidth: 1,
-    // borderColor: colors.border,
-    // backgroundColor: 'red',
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
@@ -308,9 +264,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     padding: spacing.md,
     borderRadius: radius.lg,
-    //backgroundColor: 'red',
-    // backgroundColor: colors.surface,
-    // borderWidth: 1,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -337,10 +290,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    // backgroundColor: colors.primary,
-    // padding: 10,
-    // backgroundColor: 'red',
-    // marginRight: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -370,9 +319,6 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     backgroundColor: '#F3E7DB',
-    //flexDirection: 'row',
-    // justifyContent: 'center',
-    // alignItems: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: spacing.sm,
@@ -390,9 +336,6 @@ const styles = StyleSheet.create({
     width: '31%',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    // backgroundColor: 'red',
-    // backgroundColor: colors.surface,
-    // borderWidth: 1,
     borderRadius: radius.md,
     backgroundColor: '#F0E4D8',
     alignItems: 'center',
@@ -410,9 +353,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    // backgroundColor: 'red',
-    // backgroundColor: colors.surface,
-    
     borderRadius: radius.md,
     maxWidth: '84%',
   },
@@ -440,9 +380,6 @@ const styles = StyleSheet.create({
     bottom: spacing.lg,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    //marginBottom: spacing.lg,
-    //flexDirection: 'row',
-    //alignItems: 'center',
   },
   chatInputContainer: {
     flex: 1,

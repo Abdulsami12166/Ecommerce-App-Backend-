@@ -22,7 +22,8 @@ const CustomButton = ({
         isSecondary ? styles.secondaryButton : styles.primaryButton,
         style,
       ]}
-    >//loading state of button
+    >
+      {/* loading state of button */}
       {loading ? (
         <ActivityIndicator color={isSecondary ? colors.primary : colors.surface} />
       ) : (

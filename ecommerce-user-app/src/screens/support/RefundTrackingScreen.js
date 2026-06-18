@@ -1,10 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   Alert,
   RefreshControl,
@@ -46,7 +45,7 @@ const RefundTrackingScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadRefundDetail = async () => {
+  const loadRefundDetail = useCallback(async () => {
     setLoading(true);
     try {
       const response = await refundApi.getRefundById(refundId, authToken);
@@ -57,7 +56,7 @@ const RefundTrackingScreen = ({ navigation, route }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [refundId, authToken]);
 
   useEffect(() => {
     loadRefundDetail();
@@ -70,7 +69,7 @@ const RefundTrackingScreen = ({ navigation, route }) => {
     });
 
     return () => unsubscribe();
-  }, [refundId]);
+  }, [loadRefundDetail, refundId]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CustomButton from '../../components/CustomButton';
 import ScreenHeader from '../../components/ScreenHeader';
+import { useAppStore } from '../../context/AppContext';
 import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
 
@@ -11,6 +12,7 @@ const AddMoneyScreen = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const [amount, setAmount] = useState('');
+  const { walletBalance, addWalletMoney } = useAppStore();
 
   const handleSelectAmount = value => {
     setAmount(value.replace('$', ''));
@@ -22,6 +24,7 @@ const AddMoneyScreen = ({ navigation }) => {
       return;
     }
 
+    addWalletMoney(amount.trim());
     Alert.alert('Money added', `$${amount} has been added to your wallet.`);
     navigation.goBack();
   };
@@ -35,7 +38,7 @@ const AddMoneyScreen = ({ navigation }) => {
           <View style={styles.balanceTopRow}>
             <View>
               <Text style={styles.balanceLabel}>Wallet Balance</Text>
-              <Text style={styles.balanceValue}>$ 2400.00</Text>
+              <Text style={styles.balanceValue}>$ {walletBalance.toFixed(2)}</Text>
             </View>
             <View style={styles.balanceIconWrap}>
               <Text style={styles.balanceIcon}>o</Text>

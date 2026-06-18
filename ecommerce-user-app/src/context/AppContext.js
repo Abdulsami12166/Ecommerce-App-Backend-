@@ -31,6 +31,7 @@ const buildInitialReviewsByProduct = () =>
     return accumulator;
   }, {});
 
+// eslint-disable-next-line no-unused-vars
 const initialSupportChats = [
   {
     id: 'support-sophia',
@@ -108,6 +109,8 @@ const normalizeWishlistIds = wishlist =>
 const SESSION_STORAGE_KEY = '@ecommerce/session';
 const CART_STORAGE_KEY = '@ecommerce/cart';
 const ADDRESS_STORAGE_KEY = '@ecommerce/addresses';
+const WALLET_BALANCE_KEY = '@ecommerce/wallet_balance';
+const WALLET_TRANSACTIONS_KEY = '@ecommerce/wallet_transactions';
 
 const isMongoId = value => typeof value === 'string' && /^[a-f\d]{24}$/i.test(value);
 const reconcileCartItemsWithCatalog = (items, catalogItems) =>
@@ -171,6 +174,27 @@ export const AppProvider = ({ children }) => {
   const [reviewsByProduct, setReviewsByProduct] = useState(buildInitialReviewsByProduct);
   const [supportChats, setSupportChats] = useState([]);
   const [activityFeed, setActivityFeed] = useState(buildInitialActivityFeed);
+  const [walletBalance, setWalletBalance] = useState(2400.00);
+  const [walletTransactions, setWalletTransactions] = useState([
+    {
+      id: 'wallet-1',
+      title: 'Money Added to Wallet',
+      meta: `${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' })} | 11:30 AM`,
+      amount: '+ $250.00',
+      balance: 'Balance $2400.00',
+      positive: true,
+      timestamp: Date.now() - 3600000 * 2,
+    },
+    {
+      id: 'wallet-2',
+      title: 'Order ID #FN845661',
+      meta: `${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' })} | 10:30 AM`,
+      amount: '- $50.00',
+      balance: 'Balance $2150.00',
+      positive: false,
+      timestamp: Date.now() - 3600000 * 24,
+    },
+  ]);
 
   const pushActivity = useCallback(message => {
     const entry = {
@@ -252,6 +276,34 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     AsyncStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify(savedAddresses)).catch(() => {});
   }, [savedAddresses]);
+
+  useEffect(() => {
+    const restoreWallet = async () => {
+      try {
+        const rawBalance = await AsyncStorage.getItem(WALLET_BALANCE_KEY);
+        const rawTransactions = await AsyncStorage.getItem(WALLET_TRANSACTIONS_KEY);
+
+        if (rawBalance !== null) {
+          setWalletBalance(Number(rawBalance));
+        }
+        if (rawTransactions !== null) {
+          setWalletTransactions(JSON.parse(rawTransactions));
+        }
+      } catch (error) {
+        console.log('Error restoring wallet state:', error);
+      }
+    };
+
+    restoreWallet();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(WALLET_BALANCE_KEY, String(walletBalance)).catch(() => {});
+  }, [walletBalance]);
+
+  useEffect(() => {
+    AsyncStorage.setItem(WALLET_TRANSACTIONS_KEY, JSON.stringify(walletTransactions)).catch(() => {});
+  }, [walletTransactions]);
 
   useEffect(() => {
     let mounted = true;
@@ -985,6 +1037,52 @@ export const AppProvider = ({ children }) => {
     setThemeMode(current => (current === 'light' ? 'dark' : 'light'));
   }, []);
 
+  const addWalletMoney = useCallback((amountValue) => {
+    const parsedAmount = Number(amountValue);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+
+    setWalletBalance(prevBalance => {
+      const nextBalance = prevBalance + parsedAmount;
+      const now = new Date();
+      const newTransaction = {
+        id: `wallet-${Date.now()}`,
+        title: 'Money Added to Wallet',
+        meta: `${now.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })} | ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+        amount: `+ $${parsedAmount.toFixed(2)}`,
+        balance: `Balance $${nextBalance.toFixed(2)}`,
+        positive: true,
+        timestamp: Date.now(),
+      };
+      setWalletTransactions(prevTx => [newTransaction, ...prevTx]);
+      return nextBalance;
+    });
+
+    pushActivity(`Added $${parsedAmount.toFixed(2)} to wallet`);
+  }, [pushActivity]);
+
+  const deductWalletMoney = useCallback((amountValue, reason) => {
+    const parsedAmount = Number(amountValue);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+
+    setWalletBalance(prevBalance => {
+      const nextBalance = Math.max(prevBalance - parsedAmount, 0);
+      const now = new Date();
+      const newTransaction = {
+        id: `wallet-${Date.now()}`,
+        title: reason || 'Purchase Deduction',
+        meta: `${now.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })} | ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+        amount: `- $${parsedAmount.toFixed(2)}`,
+        balance: `Balance $${nextBalance.toFixed(2)}`,
+        positive: false,
+        timestamp: Date.now(),
+      };
+      setWalletTransactions(prevTx => [newTransaction, ...prevTx]);
+      return nextBalance;
+    });
+
+    pushActivity(`Deducted $${parsedAmount.toFixed(2)} from wallet for ${reason}`);
+  }, [pushActivity]);
+
   const signOut = useCallback(async () => {
     if (authToken) {
       try {
@@ -1053,6 +1151,10 @@ export const AppProvider = ({ children }) => {
       toggleTheme,
       setThemeMode,
       signOut,
+      walletBalance,
+      walletTransactions,
+      addWalletMoney,
+      deductWalletMoney,
     }),
     [
       activityFeed,
@@ -1096,6 +1198,10 @@ export const AppProvider = ({ children }) => {
       toggleTheme,
       toggleWishlist,
       wishlistIds,
+      walletBalance,
+      walletTransactions,
+      addWalletMoney,
+      deductWalletMoney,
     ],
   );
 

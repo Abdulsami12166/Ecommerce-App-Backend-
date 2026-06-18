@@ -3,8 +3,6 @@ import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import BottomNav from '../../components/BottomNav';
 import ProductCard from '../../components/ProductCard';
 import { useAppStore } from '../../context/AppContext';
-// import { products } from '../../constants/mockData';
-// import { useThemeColors } from '../../theme/colors';
 import { useThemeColors } from '../../theme/colors';
 import spacing from '../../theme/spacing';
 
@@ -25,12 +23,6 @@ const WishlistScreen = ({ navigation }) => {
         <Text style={styles.subtitle}>
           Keep the pieces you love close and revisit them any time.
         </Text>
-        {/* wishlist empty state */}
-        {/*
-          // setInterval(() => {
-          //   d=d+11;
-          // }, interval);
-        */}
         {wishlistProducts.length===0?(
           <View style={styles.emptyCard}>
             {/* empty state when no wishlist items are there */}
@@ -43,7 +35,6 @@ const WishlistScreen = ({ navigation }) => {
           <View style={styles.grid}>
             {wishlistProducts.map(product => (
               <React.Fragment key={product.id}>
-                {/* onPress={()=>navigation.navigate('ProductDetails',{ productId:product.id })} */}
                 <ProductCard
                   product={product}
                   compact
@@ -72,26 +63,17 @@ const createStyles = colors => StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 28,
-    // backgroundColor: 'red',
-    // padding: spacing.sm,
-    // fontWeight: '800',
     fontWeight: '800',
   },
   subtitle: {
     marginTop: spacing.sm,
     color: colors.textMuted,
-    // backgroundColor: 'red',
-    // padding: spacing.sm,
-    // fontWeight: '800',
     lineHeight: 22,
   },
   grid: {
     marginTop: spacing.xl,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    // backgroundColor: 'red',
-    // padding: spacing.sm,
-    // justifyContent: 'space-between',
     justifyContent: 'space-between',
   },
   emptyCard: {

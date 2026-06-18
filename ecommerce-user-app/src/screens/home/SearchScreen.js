@@ -17,10 +17,6 @@ import spacing from '../../theme/spacing'
 
 const SearchScreen = ({ navigation }) => {
   const [query, setQuery] = useState('')
-  //const [flag,setFlag] = useState(0)
-  // const[temp,setInterval(() => {
-    
-  // }, interval);]
   const [activeFilter, setActiveFilter] = useState('Trending')
   const { catalogProducts } = useAppStore()
 
@@ -54,11 +50,6 @@ const SearchScreen = ({ navigation }) => {
                 style={[styles.filterChip, active && styles.filterChipActive]}
                 onPress={() => setActiveFilter(filter.title)}
               >
-                {/*
-                  // array.forEach(element => {
-                  //    check
-                  // });
-                */}
                 <Text style={[styles.filterText, active && styles.filterTextActive]}>
                   {filter.title}
                 </Text>
@@ -70,10 +61,6 @@ const SearchScreen = ({ navigation }) => {
         <View style={styles.grid}>
           {filteredProducts.map(product => (
             <React.Fragment key={product.id}>
-              {/*
-                // map(()=>{idx+1})
-                // compact
-              */}
               <ProductCard
                 product={product}
                 onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}

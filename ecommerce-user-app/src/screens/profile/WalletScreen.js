@@ -3,73 +3,47 @@ import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppIcon from '../../components/AppIcon';
 import CustomButton from '../../components/CustomButton';
 import ScreenHeader from '../../components/ScreenHeader';
+import { useAppStore } from '../../context/AppContext';
 import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
-
-const walletGroups = [
-  {
-    id: 'wallet-group-1',
-    label: 'Today',
-    items: [
-      {
-        id: 'wallet-1',
-        title: 'Money Added to Wallet',
-        meta: '11 March | 11:30 AM',
-        amount: '+ $250.00',
-        balance: 'Balance $2400.00',
-        positive: true,
-      },
-    ],
-  },
-  {
-    id: 'wallet-group-2',
-    label: 'Yesterday',
-    items: [
-      {
-        id: 'wallet-2',
-        title: 'Order ID #FN845661',
-        meta: '10 March | 10:30 AM',
-        amount: '- $50.00',
-        balance: 'Balance $2100.00',
-        positive: false,
-      },
-    ],
-  },
-  {
-    id: 'wallet-group-3',
-    label: '09 March 2026',
-    items: [
-      {
-        id: 'wallet-3',
-        title: 'Money Added to Wallet',
-        meta: '09 March | 8:30 AM',
-        amount: '+ $500.00',
-        balance: 'Balance $2150.00',
-        positive: true,
-      },
-      {
-        id: 'wallet-4',
-        title: 'Order ID #FN854539',
-        meta: '09 March | 7:48 AM',
-        amount: '- $50.00',
-        balance: 'Balance $1,650.00',
-        positive: false,
-      },
-      {
-        id: 'wallet-5',
-        title: 'Order ID #FN854538',
-        meta: '09 March | 7:36 AM',
-        amount: '- $50.00',
-        balance: 'Balance $1700.00',
-        positive: false,
-      },
-    ],
-  },
-];
 
 const WalletScreen = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const { walletBalance, walletTransactions } = useAppStore();
+
+  const groupedTransactions = React.useMemo(() => {
+    const groups = {};
+    const todayStr = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
+
+    walletTransactions.forEach(tx => {
+      let label = 'Earlier';
+      if (tx.meta) {
+        const datePart = tx.meta.split(' | ')[0];
+        if (datePart === todayStr || datePart === 'Today') {
+          label = 'Today';
+        } else if (datePart === yesterdayStr || datePart === 'Yesterday') {
+          label = 'Yesterday';
+        } else {
+          label = datePart;
+        }
+      }
+
+      if (!groups[label]) {
+        groups[label] = [];
+      }
+      groups[label].push(tx);
+    });
+
+    return Object.keys(groups).map((label, index) => ({
+      id: `group-${index}`,
+      label,
+      items: groups[label],
+    }));
+  }, [walletTransactions]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -80,7 +54,7 @@ const WalletScreen = ({ navigation }) => {
           <View style={styles.balanceTopRow}>
             <View>
               <Text style={styles.balanceLabel}>Wallet Balance</Text>
-              <Text style={styles.balanceValue}>$2400.00</Text>
+              <Text style={styles.balanceValue}>${walletBalance.toFixed(2)}</Text>
             </View>
             <View style={styles.balanceIconWrap}>
               <AppIcon icon="wallet" size={22} color={colors.primary} />
@@ -94,7 +68,7 @@ const WalletScreen = ({ navigation }) => {
           />
         </View>
 
-        {walletGroups.map(group => (
+        {groupedTransactions.map(group => (
           <View key={group.id} style={styles.groupWrap}>
             <Text style={styles.groupTitle}>{group.label}</Text>
 

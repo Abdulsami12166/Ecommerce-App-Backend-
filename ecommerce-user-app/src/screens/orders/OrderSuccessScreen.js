@@ -7,14 +7,6 @@ import { useAppStore } from '../../context/AppContext'
 import { useThemeColors } from '../../theme/colors'
 import spacing, { radius } from '../../theme/spacing'
 
-// const temp = setInterval(() => {
-  // map(() => {
-  //  useMemo(() => {
-  //    setInterval(() => {
-  //      flag=flag+1
-  //    }, interval);
-  // }, 1000);
-// }, 1000);
 const OrderSuccessScreen = ({ navigation, route }) => {
   const colors = useThemeColors()
   const styles = createStyles(colors)
@@ -88,8 +80,6 @@ const createStyles = colors => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    //fromOrder ? '#F2E6DA' : colors.background,
-    // backgroundColor: 'red',
   },
   backBtn: {
     width: 42,
@@ -119,8 +109,6 @@ const createStyles = colors => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 56,
-    //padding: spacing.lg,  
-    // backgroundColor: fromOrder ? colors.primary : colors.primarySoft,
     backgroundColor: colors.primary,
   },
   badgeTick: {
@@ -131,11 +119,6 @@ const createStyles = colors => StyleSheet.create({
   title: {
     marginTop: spacing.lg,
     color: colors.text,
-    //padding: spacing.sm,
-    //reference fromOrder ? colors.text : colors.text,
-    // backgroundColor: 'red',
-    // backgroundColor: fromOrder ? colors.text : colors.text,
-    // backgroundColor: colors.text,
     fontSize: 26,
     fontWeight: '800',
     textAlign: 'center',
@@ -161,8 +144,6 @@ const createStyles = colors => StyleSheet.create({
   summaryCard: {
     marginBottom: spacing.lg,
     padding: spacing.lg,
-    //width: '100%',
-    //p adding: spacing.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceMuted,
   },
@@ -170,8 +151,6 @@ const createStyles = colors => StyleSheet.create({
     color: colors.primary,
     fontWeight: '800',
     textTransform: 'uppercase',
-    //textAlign: 'center',
-    //letterSpacing: 0.6,
     fontSize: 12,
   },
   summaryValue: {

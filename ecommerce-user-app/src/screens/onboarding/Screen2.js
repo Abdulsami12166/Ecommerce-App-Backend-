@@ -56,7 +56,6 @@ const Screen2 = ({ navigation }) => {
           <Text style={styles.skip}>Skip</Text>
         </TouchableOpacity>
       </View>
-              // showing mock home fed
       <View style={styles.mockPhone}>
         <View style={styles.mockHeader}>
           <View>

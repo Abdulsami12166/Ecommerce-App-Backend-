@@ -60,7 +60,7 @@ const routeFromNotification = (data?: NotificationData | null) => {
 
 const AppShell = () => {
   const colors = useThemeColors() as any;
-  const { authRestoring, authToken, currentUser } = useAppStore();
+  const { authRestoring } = useAppStore();
 
   const navigationTheme = React.useMemo(
     () => ({

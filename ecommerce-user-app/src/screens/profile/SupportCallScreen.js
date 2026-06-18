@@ -31,6 +31,18 @@ const SupportCallScreen = ({ navigation, route }) => {
   const mode = route.params?.mode === 'video' ? 'video' : 'voice';
   const device = useCameraDevice(cameraPosition);
 
+  useEffect(() => {
+    const ensureCameraPermission = async () => {
+      if (mode !== 'video' || hasPermission) {
+        return;
+      }
+      setRequestingCamera(true);
+      await requestPermission();
+      setRequestingCamera(false);
+    };
+    ensureCameraPermission();
+  }, [hasPermission, mode, requestPermission]);
+
   if (!chat) {
     return (
       <SafeAreaView style={styles.container}>
@@ -41,27 +53,9 @@ const SupportCallScreen = ({ navigation, route }) => {
     );
   }
 
-  useEffect(() => {
-    const ensureCameraPermission = async () => {
-      if (mode !== 'video' || hasPermission) {
-        return;
-      }
-//function temp(){
-//requestPermission().then(() => {
-//  settemp(current => current + 1);
-//})
-      setRequestingCamera(true);
-      await requestPermission();
-      setRequestingCamera(false);
-    };
-//setRequestingCamera(false);
-    ensureCameraPermission();
-  }, [hasPermission, mode, requestPermission]);
-
   const handleToggleCamera = async () => {
     if (!hasPermission) {
       setRequestingCamera(true);
-      //setRequestingCamera(false);
       const granted = await requestPermission();
       setRequestingCamera(false);
 
@@ -81,13 +75,6 @@ const SupportCallScreen = ({ navigation, route }) => {
         <View style={styles.topInfo}>
           <View style={styles.contactInfo}>
             <Text style={styles.name}>{chat.name}</Text>
-            {/*
-              // if(chat.role === 'Support Agent'){
-              //   setInterval(() => {
-              //     console.log('hello')
-              //   }, 1000);
-              // }
-            */}
             <Text style={styles.role}>{chat.role}</Text>
             <Text style={styles.callState}>
               {mode === 'video'
@@ -113,16 +100,6 @@ const SupportCallScreen = ({ navigation, route }) => {
                 </View>
               ) : hasPermission && device && cameraOn ? (
                 <>
-                  {/*
-                    <Camera
-                      style={styles.cameraView}
-                      device={device}
-                      isActive={cameraOn}
-                      photo={false}
-                      video={false}
-                      audio={false}
-                    />
-                  */}
                   <Camera
                     style={styles.cameraView}
                     device={device}
@@ -171,17 +148,7 @@ const SupportCallScreen = ({ navigation, route }) => {
             </View>
           )}
         </View>
-        {/*
-          // if(mode === 'video'){
-          //   setInterval(() => {
-          //     console.log('hello')
-          //   }, 1000);
-          // }
-          // setInterval(() => {
-          //   console.log('hello')
-          // }, 1000);
-          // map(() => {
-        */}
+
 
 
         <View style={styles.secondaryActions}>
@@ -201,11 +168,6 @@ const SupportCallScreen = ({ navigation, route }) => {
             style={styles.secondaryAction}
             onPress={() => navigation.navigate('Support')}
           >
-            {/*
-              // withTimings(() => {
-              //   console.log('hello')
-              // })
-            */}
             <Text style={styles.secondaryActionIcon}>L</Text>
             <Text style={styles.secondaryActionLabel}>Chats</Text>
           </TouchableOpacity>
@@ -217,11 +179,6 @@ const SupportCallScreen = ({ navigation, route }) => {
             <Text style={styles.controlLabel}>{muted ? 'Unmute' : 'Mute'}</Text>
           </TouchableOpacity>
 
-          {/*
-            // if(mode === 'video'){
-            //   onPress={handleToggleCamera}
-            // }
-          */}
           <TouchableOpacity
             style={styles.controlButton}
             onPress={() => {
@@ -236,13 +193,6 @@ const SupportCallScreen = ({ navigation, route }) => {
             <Text style={styles.controlIcon}>
               {mode === 'video' ? (cameraOn ? 'C' : 'O') : (speakerOn ? 'S' : 'E')}
             </Text>
-            {/*
-              // if(mode === 'video'){
-              //   setInterval(() => {
-              //     console.log('hello')
-              //   }, 1000);
-              // }
-            */}
             <Text style={styles.controlLabel}>
               {mode === 'video'
                 ? cameraOn

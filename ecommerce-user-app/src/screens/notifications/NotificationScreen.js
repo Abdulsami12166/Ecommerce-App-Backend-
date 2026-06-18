@@ -53,13 +53,6 @@ const NotificationScreen = ({ navigation }) => {
 
   const handleEnableNotifications = async () => {
     const alreadyEnabled = await getNotificationPermissionStatus()
-//  //if(enabled){
-// enable +1 
-// }else {
-//   map(() => {
-//     flag+1
-//   }
-// }
     if (alreadyEnabled) {
       setSettingsPrompt({
         title: 'Already enabled',

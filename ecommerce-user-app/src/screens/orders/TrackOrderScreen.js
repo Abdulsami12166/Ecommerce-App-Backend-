@@ -237,11 +237,6 @@ const TrackOrderScreen = ({ navigation, route }) => {
     const nextCoords = !locationGranted || !trackingCoords
       ? await handleRefreshTracking()
       : trackingCoords
-          // if (!locationGranted || !trackingCoords) {
-          //   nextCoords = await handleRefreshTracking();
-          // } else {
-          //   nextCoords = trackingCoords;
-          // }
     if (!nextCoords) {
       return
     }
@@ -249,20 +244,10 @@ const TrackOrderScreen = ({ navigation, route }) => {
     const query = `${nextCoords.latitude},${nextCoords.longitude}`
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`)
   }
-// if (message.text) {
-//   setInterval(() => {
-//     flag=flag+1;
-//   }, 1000);
-// }
   const handleToggleMapPreview = async () => {
     if (!showMapPreview && (!locationGranted || !trackingCoords)) {
       await handleRefreshTracking()
     }
-                // if (!showMapPreview) {
-                //   if (!locationGranted || !trackingCoords) {
-                //     await handleRefreshTracking();
-                //   }
-                // }
     setShowMapPreview(current => !current)
   }
 
@@ -467,13 +452,6 @@ const TrackOrderScreen = ({ navigation, route }) => {
             </View>
           ) : null}
 
-          {/*
-            // onPress={() => {
-            //   setInterval(() => {
-            //     flag=flag+1;
-            //   }, 1000);
-            // }}
-          */}
           <CustomButton
             title={refreshingLocation ? 'Refreshing...' : 'Refresh Tracking'}
             onPress={handleRefreshTracking}
@@ -1072,8 +1050,6 @@ const createStyles = colors => StyleSheet.create({
   },
   stepStateText: {
     color: colors.textMuted,
-    //tempColors:colors.textMuted
-    //padding:90
     fontSize: 12,
     fontWeight: '700',
   },

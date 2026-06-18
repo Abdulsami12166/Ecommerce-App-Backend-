@@ -72,7 +72,7 @@ const getWalletFallbackIcon = walletId => {
 const PaymentScreen = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const { cartItems, cartTotal, paymentMethods, selectPaymentMethod, placeOrder, placePrototypeOrder, savedAddresses, authToken, currentUser } =
+  const { cartItems, cartTotal, paymentMethods, selectPaymentMethod, placeOrder, placePrototypeOrder, savedAddresses, authToken, currentUser, walletBalance, deductWalletMoney } =
     useAppStore();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     paymentMethods.find(method => method.selected)?.id || paymentMethods[0]?.id,
@@ -199,7 +199,23 @@ const PaymentScreen = ({ navigation }) => {
         transactionStatus: selectedMethod?.type === 'cash' ? 'pending' : 'paid',
       };
 
-      if (selectedMethod?.type !== 'cash' && qrPaymentMode === 'qr') {
+      if (selectedMethod?.type === 'wallet') {
+        if (walletBalance < finalAmount) {
+          Alert.alert(
+            'Insufficient balance',
+            `Your wallet balance is $${walletBalance.toFixed(2)}, but the order total is $${finalAmount.toFixed(2)}. Please add money to your wallet or choose another payment method.`
+          );
+          setPlacingOrder(false);
+          return;
+        }
+
+        deductWalletMoney(finalAmount, `Payment for Order`);
+        paymentPayload = {
+          paymentStatus: 'paid',
+          transactionStatus: 'paid',
+        };
+        paymentCompleted = true;
+      } else if (selectedMethod?.type !== 'cash' && qrPaymentMode === 'qr') {
         paymentPayload = {
           paymentStatus: 'pending',
           transactionStatus: 'pending',

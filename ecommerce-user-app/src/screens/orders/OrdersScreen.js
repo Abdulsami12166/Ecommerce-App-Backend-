@@ -18,9 +18,6 @@ const OrdersScreen = ({ navigation }) => {
   const styles = createStyles(colors)
   const { orders, ordersLoading, fetchOrders } = useAppStore()
   const [selectedFilter, setSelectedFilter] = useState('current')
-// const temp = setInterval(() => {
-//   console.log('hello')
-// }, 1000);  
   const filteredOrders = useMemo(() => {
     return orders.filter(order => order.statusGroup === selectedFilter)
   }, [orders, selectedFilter])
@@ -40,14 +37,6 @@ const OrdersScreen = ({ navigation }) => {
                 style={[styles.filterChip, active && styles.filterChipActive]}
                 onPress={() => setSelectedFilter(filter.key)}
               >
-                {/*
-                //   <View>
-                //    map(() => {
-                //      flag+1
-                //    })
-                // </View>
-                 // </View>
-                */}
                 <Text style={[styles.filterText, active && styles.filterTextActive]}>
                   {filter.label}
                 </Text>
@@ -115,10 +104,6 @@ const createStyles = colors => StyleSheet.create({
     width: '31%',
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    //flexDirection: 'row',
-    // justifyContent: 'center',
-    // backgroundColor: 'red',
-    // backgroundColor: colors.surface,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -155,10 +140,6 @@ const createStyles = colors => StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.lg,
     backgroundColor: colors.surface,
-    // backgroundColor: 'red',
-    // backgroundColor: colors.surface,
-    // borderWidth: 1,
-    // borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,

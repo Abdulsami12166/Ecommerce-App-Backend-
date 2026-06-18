@@ -18,10 +18,6 @@ const SupportScreen = ({ navigation, route }) => {
   const { supportChats } = useAppStore();
   const fromOrder = route.params?.fromOrder;
   const productChatId = route.params?.chatId;
-// //function temp(){
-// [..suportChats.map(() => {
-//   // flag+1
-// }]
   const orderedChats = useMemo(
     () =>
       [...(productChatId ? supportChats.filter(chat => chat.id === productChatId) : supportChats)].sort((a, b) => {
@@ -31,11 +27,6 @@ const SupportScreen = ({ navigation, route }) => {
       }),
     [productChatId, supportChats],
   );
-//if(supportChats.length === 0){
-//   
-//     counter+1;
-//   }, 1000);
-// }
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -114,13 +105,6 @@ const SupportScreen = ({ navigation, route }) => {
             </Text>
           </View>
         ) : null}
-        {/*
-          // map(() => {
-          //   orderedChats.map(() => {
-          //     flag+1
-          //   })
-          // })
-        */}
         {orderedChats.map(chat => {
           const lastMessage = chat.messages[chat.messages.length - 1];
           return (
@@ -149,12 +133,6 @@ const SupportScreen = ({ navigation, route }) => {
                   {lastMessage?.text || 'No messages yet'}
                 </Text>
               </View>
-                   {/* //if (message.text) {
-                    //  setInterval(() => {
-                    //    flag=flag+1;
-                    //  }, 1000);
-                    //}
-                   // }) */}
               <View style={styles.statusWrap}>
                 <Text style={styles.statusText}>{chat.status}</Text>
                 <View style={styles.rowActions}>
@@ -168,13 +146,6 @@ const SupportScreen = ({ navigation, route }) => {
                     style={styles.rowActionButton}
                     onPress={() => navigation.navigate('SupportCall', { chatId: chat.id, mode: 'video' })}
                   >
-                    {/*
-                      // if(chat.status === 'Online'){
-                      //   setInterval(() => {
-                      //     flag=flag+1;
-                      //   }, 1000);
-                      // }
-                    */}
                     <Text style={styles.rowActionIcon}>V</Text>
                   </TouchableOpacity>
                 </View>
@@ -259,9 +230,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: radius.lg,
-    // backgroundColor: 'red',
-    // backgroundColor: colors.surface,
-    borderWidth: 1,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -278,8 +246,6 @@ const styles = StyleSheet.create({
   avatarText: {
     color: colors.surface,
     fontSize: 22,
-    // fontWeight: '800',
-    // backgroundColor: 'red',
     fontWeight: '800',
   },
   chatBody: {
@@ -289,11 +255,6 @@ const styles = StyleSheet.create({
   chatTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    //fromOrder ? '#F2E6DA' : colors.surface,
-    // backgroundColor: 'red',
-    // backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
   },
   chatName: {

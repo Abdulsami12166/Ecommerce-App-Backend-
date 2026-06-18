@@ -1,0 +1,5 @@
+{"actor":"orchestrator-loop","agent_type":"coder","action":"dispatch","task_id":"next-claude-code","control_level":"individual","allowed":true,"ts":"2026-06-18T01:24:06.362Z"}
+{"actor":"orchestrator-loop","agent_type":"coder","action":"dispatch","task_id":"next-claude-code","control_level":"individual","allowed":true,"ts":"2026-06-18T03:05:48.223Z"}
+{"actor":"orchestrator-loop","agent_type":"coder","action":"dispatch","task_id":"next-claude-code","control_level":"individual","allowed":true,"ts":"2026-06-18T03:11:14.928Z"}
+{"actor":"orchestrator-loop","agent_type":"coder","action":"dispatch","task_id":"next-claude-code","control_level":"individual","allowed":true,"ts":"2026-06-18T03:16:17.923Z"}
+{"actor":"orchestrator-loop","agent_type":"coder","action":"dispatch","task_id":"next-claude-code","control_level":"individual","allowed":true,"ts":"2026-06-18T03:21:22.161Z"}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -64,7 +64,7 @@ const TicketsDashboardScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     setLoading(true);
     try {
       const response = await ticketApi.getTickets(authToken);
@@ -75,7 +75,7 @@ const TicketsDashboardScreen = ({ navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [authToken]);
 
   useEffect(() => {
     loadTickets();
@@ -93,7 +93,7 @@ const TicketsDashboardScreen = ({ navigation }) => {
       unsubscribeUpdated();
       unsubscribeMessage();
     };
-  }, []);
+  }, [loadTickets]);
 
   const onRefresh = () => {
     setRefreshing(true);

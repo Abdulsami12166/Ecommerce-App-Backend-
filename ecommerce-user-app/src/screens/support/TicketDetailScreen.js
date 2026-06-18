@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
   Alert,
   KeyboardAvoidingView,
@@ -65,7 +64,7 @@ const TicketDetailScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const loadTicketDetail = async () => {
+  const loadTicketDetail = useCallback(async () => {
     setLoading(true);
     try {
       const response = await ticketApi.getTicketById(ticketId, authToken);
@@ -75,7 +74,7 @@ const TicketDetailScreen = ({ navigation, route }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [ticketId, authToken]);
 
   useEffect(() => {
     loadTicketDetail();
@@ -97,7 +96,7 @@ const TicketDetailScreen = ({ navigation, route }) => {
       unsubscribeUpdated();
       unsubscribeMessage();
     };
-  }, [ticketId]);
+  }, [loadTicketDetail, ticketId]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) {
