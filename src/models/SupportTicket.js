@@ -45,10 +45,9 @@ const supportTicketSchema = new mongoose.Schema(
 
 supportTicketSchema.pre('validate', function generateTicketNumber(next) {
   if (!this.ticketNumber) {
-    this.ticketNumber = TKT--;
+    this.ticketNumber = `TKT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
   }
   next();
 });
 
 module.exports = mongoose.model('SupportTicket', supportTicketSchema);
-

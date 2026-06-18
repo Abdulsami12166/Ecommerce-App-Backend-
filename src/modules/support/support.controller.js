@@ -31,7 +31,7 @@ const supportController = {
         category,
         subject,
         description,
-        email: safeEmail,
+        email,
         priority: normalizePriority(priority),
         status: 'open',
         messages: [

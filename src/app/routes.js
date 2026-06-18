@@ -4,6 +4,7 @@ const usersRoutes = require('../modules/users/users.routes');
 const ordersRoutes = require('../modules/orders/orders.routes');
 const adminRoutes = require('../modules/admin/admin.routes');
 const supportRoutes = require('../modules/support/support.routes');
+const { logger } = require('../shared/utils/logger');
 
 const registerRoutes = app => {
   app.get('/', (req, res) => {
@@ -20,13 +21,6 @@ const registerRoutes = app => {
     });
   });
 
-  // Public support health check - no auth required
-  app.get('/api/v1/support/ping', (req, res) => {
-    res.json({ ok: true, message: 'support service is reachable', commit: '3b1ee472' });
-  });
-
-  // Debug: verify routes are registered
-  console.log('[routes] Support health check registered at /api/v1/support/ping');
 
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/products', productsRoutes);
@@ -34,6 +28,11 @@ const registerRoutes = app => {
   app.use('/api/v1/orders', ordersRoutes);
   app.use('/api/v1/support', supportRoutes);
   app.use('/api/v1/admin', adminRoutes);
+
+  // Backwards-compat: some clients may call without /api/v1 prefix
+  app.use('/support', supportRoutes);
+  app.use('/admin', adminRoutes);
+
 };
 
 module.exports = { registerRoutes };

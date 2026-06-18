@@ -84,23 +84,160 @@ const getActivities = async query => {
   };
 };
 
-const getUsers = async () => ({ users: await adminRepository.getUsers() });
+const normalizeUser = user => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  avatar: user.avatar,
+  isVerified: user.isVerified,
+  blocked: user.blocked,
+  status: user.blocked ? 'blocked' : 'active',
+  lastLogin: user.lastLoginAt,
+  lastLoginAt: user.lastLoginAt,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+});
+
+const getUsers = async () => ({ users: await adminRepository.getAdmins() });
 const getUserOrders = async userId => ({ orders: await adminRepository.getOrdersByUserId(userId) });
 
-const blockUser = async userId => {
+const buildCustomerSummary = async user => {
+  const orders = await adminRepository.getOrdersByUserId(user._id);
+  return {
+    ...normalizeUser(user),
+    totalOrders: orders.length,
+    totalSpent: orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0),
+    wishlistCount: user.wishlist?.length || 0,
+    lastActivityAt: user.lastLoginAt || user.updatedAt || user.createdAt,
+  };
+};
+
+const getCustomers = async query => {
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 100);
+  const params = {
+    page,
+    limit,
+    search: query.search,
+    status: query.status,
+    sortBy: query.sortBy,
+    sortOrder: query.sortOrder,
+  };
+  const [users, total] = await Promise.all([
+    adminRepository.getCustomers(params),
+    adminRepository.countCustomers(params),
+  ]);
+  const customers = await Promise.all(users.map(buildCustomerSummary));
+  return {
+    customers,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+  };
+};
+
+const getCustomerDetail = async userId => {
+  const user = await adminRepository.getCustomerById(userId);
+  if (!user) throw new AppError('Customer not found', 404);
+  const [summary, orders, activityLogs] = await Promise.all([
+    buildCustomerSummary(user),
+    adminRepository.getOrdersByUserId(userId),
+    adminRepository.getActivitiesByUserId(userId, { limit: 20 }),
+  ]);
+
+  const orderList = orders.map(order => ({
+    _id: order._id,
+    totalAmount: order.totalAmount,
+    orderStatus: order.orderStatus,
+    paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
+    items: order.items,
+    address: order.address,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  }));
+
+  const addresses = orders
+    .map(order => order.address)
+    .filter(Boolean)
+    .map(address => ({
+      _id: address._id,
+      type: address.type || address.label || 'Shipping',
+      address: [
+        address.addressLine1,
+        address.addressLine2,
+        address.city,
+        address.state,
+        address.postalCode || address.pincode,
+        address.country,
+      ].filter(Boolean).join(', ') || String(address),
+    }));
+
+  return {
+    customer: {
+      ...summary,
+      addresses,
+      orders: orderList,
+      ordersPlaced: orderList.length,
+      ordersCancelled: orderList.filter(order => order.orderStatus === 'cancelled').length,
+      ordersReturned: orderList.filter(order => order.orderStatus === 'returned').length,
+      refundRequests: [],
+      ticketsRaised: [],
+      chatHistory: [],
+      cartActivity: [],
+      notificationHistory: [],
+      wishlist: user.wishlist || [],
+      activityLogs,
+    },
+  };
+};
+
+const getCustomerActivityLogs = async (userId, query) => {
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 100);
+  const logs = await adminRepository.getActivitiesByUserId(userId, { page, limit });
+  return { logs };
+};
+
+const getCustomerNotificationPreferences = async userId => ({
+  preferences: {
+    _id: userId,
+    userId,
+    channels: { email: true, sms: false, push: true, inApp: true },
+    categories: {
+      orders: true,
+      refunds: true,
+      tickets: true,
+      marketing: false,
+    },
+    frequency: 'instant',
+  },
+});
+
+const blockUser = async (userId, app) => {
   const user = await adminRepository.getUserById(userId);
   if (!user) throw new AppError('User not found', 404);
   user.blocked = true;
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
+  user.refreshToken = undefined;
   await adminRepository.saveUser(user);
   await adminRepository.createActivity({
     user: user._id,
     action: 'profile_update',
     details: `${user.name} was blocked by admin`,
   });
+  const payload = { userId: String(user._id), status: 'blocked', message: 'Account blocked by administrator' };
+  emitToAdmins(app, socketEvents.DOMAIN.ADMIN_ACTIVITY_CREATED, payload);
+  emitToUser(app, user._id, socketEvents.DOMAIN.ADMIN_FORCE_LOGOUT, payload);
   return { user };
 };
 
-const unblockUser = async userId => {
+const unblockUser = async (userId, app) => {
   const user = await adminRepository.getUserById(userId);
   if (!user) throw new AppError('User not found', 404);
   user.blocked = false;
@@ -109,6 +246,11 @@ const unblockUser = async userId => {
     user: user._id,
     action: 'profile_update',
     details: `${user.name} was unblocked by admin`,
+  });
+  emitToAdmins(app, socketEvents.DOMAIN.ADMIN_ACTIVITY_CREATED, {
+    userId: String(user._id),
+    status: 'active',
+    message: 'Account unblocked by administrator',
   });
   return { user };
 };
@@ -146,6 +288,7 @@ const forceLogoutUser = async (userId, app) => {
 };
 
 const getProducts = async () => ({ products: await adminRepository.getProducts() });
+const getTransactions = async () => ({ transactions: await adminRepository.getTransactions() });
 
 const createProduct = async (payload, adminUserId, app) => {
   if (!payload?.title?.trim()) {
@@ -170,7 +313,7 @@ const createProduct = async (payload, adminUserId, app) => {
       : payload.image
         ? [payload.image]
         : [],
-    isPublished: payload.isPublished ?? true,
+    isPublished: true, // Always publish products created by admin
   };
 
   const product = await adminRepository.createProduct(nextPayload);
@@ -189,6 +332,7 @@ const createProduct = async (payload, adminUserId, app) => {
     price: product.price,
     discountedPrice: product.discountedPrice,
     stock: product.stock,
+    sizes: product.sizes || [],
   };
 
   emitToAdmins(app, socketEvents.DOMAIN.PRODUCT_CREATED, eventPayload);
@@ -197,13 +341,34 @@ const createProduct = async (payload, adminUserId, app) => {
   return { product };
 };
 
-const updateProduct = async (productId, payload) => {
+const updateProduct = async (productId, payload, app) => {
   const product = await adminRepository.getProductById(productId);
   if (!product) throw new AppError('Product not found', 404);
+
   Object.assign(product, payload);
   await adminRepository.saveProduct(product);
+
+  // Notify users in real-time
+  const eventPayload = {
+    productId: String(product._id),
+    title: product.title,
+    description: product.description,
+    image: product.images?.[0] || '',
+    category: product.category,
+    price: product.price,
+    discountedPrice: product.discountedPrice,
+    stock: product.stock,
+    sizes: product.sizes || [],
+  };
+
+  // Notify users
+  // - existing client listens to `product.updated`
+  emitToAll(app, 'product.updated', eventPayload);
+
+
   return { product };
 };
+
 
 const deleteProduct = async productId => {
   const product = await adminRepository.getProductById(productId);
@@ -225,8 +390,26 @@ const createAdminOrder = async (payload, app) => {
 const updateOrderStatus = async (orderId, payload, app) => {
   const order = await adminRepository.getOrderById(orderId);
   if (!order) throw new AppError('Order not found', 404);
-  if (payload.orderStatus) order.orderStatus = payload.orderStatus;
-  if (payload.paymentStatus) order.paymentStatus = payload.paymentStatus;
+  const nextStatus = payload.orderStatus || order.orderStatus;
+  const nextPaymentStatus = payload.paymentStatus || order.paymentStatus;
+
+  if (payload.orderStatus) {
+    order.orderStatus = payload.orderStatus;
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({
+      status: payload.orderStatus,
+      label: String(payload.orderStatus)
+        .split('-')
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' '),
+      timestamp: new Date(),
+    });
+  }
+
+  if (payload.paymentStatus) {
+    order.paymentStatus = payload.paymentStatus;
+  }
+
   await adminRepository.saveOrder(order);
   await adminRepository.createActivity({
     user: order.user,
@@ -237,8 +420,8 @@ const updateOrderStatus = async (orderId, payload, app) => {
   const eventPayload = {
     orderId: String(order._id),
     userId: String(order.user),
-    orderStatus: order.orderStatus,
-    paymentStatus: order.paymentStatus,
+    orderStatus: nextStatus,
+    paymentStatus: nextPaymentStatus,
   };
 
   emitToAdmins(app, socketEvents.LEGACY.ORDER_STATUS_CHANGED, eventPayload);
@@ -255,11 +438,67 @@ const deleteOrder = async orderId => {
   return {};
 };
 
+const getOrderTimeline = async orderId => {
+  const order = await adminRepository.getOrderById(orderId);
+  if (!order) throw new AppError('Order not found', 404);
+
+  const events = (order.statusHistory || [])
+    .slice()
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+    .map((sh, idx) => ({
+      id: `timeline_${idx}_${orderId}`,
+      timestamp: sh.timestamp,
+      event: sh.status,
+      description: sh.label || sh.status,
+      actor: 'admin',
+    }));
+
+  return { orderId: String(orderId), events };
+};
+
+const addOrderTimelineEvent = async (orderId, payload, adminUserId, app) => {
+  const order = await adminRepository.getOrderById(orderId);
+  if (!order) throw new AppError('Order not found', 404);
+
+  const { event, description, actor } = payload || {};
+  const nextStatus = event || payload?.status || payload?.orderStatus;
+  if (!nextStatus) throw new AppError('Event/status is required', 400);
+
+  order.orderStatus = nextStatus;
+  order.statusHistory = order.statusHistory || [];
+  order.statusHistory.push({
+    status: nextStatus,
+    label: description || String(nextStatus)
+      .split('-')
+      .map(part => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+      .join(' '),
+    timestamp: new Date(),
+  });
+
+  await adminRepository.saveOrder(order);
+
+  const eventPayload = {
+    orderId: String(order._id),
+    userId: String(order.user),
+    orderStatus: nextStatus,
+    paymentStatus: order.paymentStatus,
+  };
+
+  emitToAdmins(app, socketEvents.DOMAIN.ORDER_UPDATED, eventPayload);
+  emitToUser(app, order.user, socketEvents.DOMAIN.ORDER_UPDATED, eventPayload);
+
+  return { orderId: String(order._id) };
+};
+
 module.exports = {
   getDashboardMetrics,
   getActivities,
   getUsers,
   getUserOrders,
+  getCustomers,
+  getCustomerDetail,
+  getCustomerActivityLogs,
+  getCustomerNotificationPreferences,
   blockUser,
   unblockUser,
   deleteUser,
@@ -269,7 +508,10 @@ module.exports = {
   updateProduct,
   deleteProduct,
   getOrders,
+  getTransactions,
   createAdminOrder,
   updateOrderStatus,
   deleteOrder,
+  getOrderTimeline,
+  addOrderTimelineEvent,
 };

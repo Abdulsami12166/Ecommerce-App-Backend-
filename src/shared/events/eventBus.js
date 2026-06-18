@@ -4,8 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../../models/User');
 const { logger } = require('../utils/logger');
 const { socketEvents } = require('./socketEvents');
-const { USER_JWT_SECRET, ADMIN_JWT_SECRET } = require('../middleware/auth');
-const { corsOptions } = require('../utils/corsOptions');
+const { USER_JWT_SECRET, ADMIN_JWT_SECRET, ADMIN_ROLES, normalizeRole } = require('../middleware/auth');
 
 const extractSocketToken = socket =>
   socket.handshake.auth?.token
@@ -43,7 +42,10 @@ const resolveSocketUser = async socket => {
 
 const attachSocketServer = (httpServer, app) => {
   const io = new Server(httpServer, {
-    cors: corsOptions,
+    cors: {
+      origin: process.env.CLIENT_URL || '*',
+      credentials: true,
+    },
   });
 
   io.use(async (socket, next) => {
@@ -79,7 +81,7 @@ const attachSocketServer = (httpServer, app) => {
     logger.info('Socket connected', { socketId: socket.id });
 
     socket.on(socketEvents.ADMIN_SUBSCRIBE, () => {
-      if (socket.data.user?.role !== 'admin') {
+      if (!ADMIN_ROLES.has(normalizeRole(socket.data.user?.role))) {
         logger.warn('Rejected admin socket subscription', { socketId: socket.id });
         socket.emit('socket.error', { message: 'Admin access required' });
         socket.disconnect(true);
@@ -121,7 +123,6 @@ const emitToUser = (app, userId, event, payload) => {
 
 module.exports = {
   attachSocketServer,
-  getIo,
   emitToAll,
   emitToAdmins,
   emitToUser,

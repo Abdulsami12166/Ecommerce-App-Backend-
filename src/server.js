@@ -11,7 +11,6 @@ const port = process.env.PORT || 5001;
 
 const startServer = async () => {
   try {
-    console.log('[Backend] Starting Ecommerce backend server (backend-only branch)');
     await connectDB();
 
     const server = http.createServer(app);

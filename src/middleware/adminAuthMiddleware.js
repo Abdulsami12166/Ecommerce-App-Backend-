@@ -1,6 +1,6 @@
 const { sendSuccess } = require('../shared/utils/apiResponse');
 const { AppError } = require('../shared/utils/appError');
-const { normalizeRole, requireAdminAuth, requireAdminRoles } = require('../shared/middleware/auth');
+const { requireAdminAuth } = require('../shared/middleware/auth');
 const authService = require('../modules/auth/auth.service');
 const { authRepository } = require('../modules/auth/auth.repository');
 
@@ -22,7 +22,7 @@ const adminMe = async (req, res, next) => {
     const userId = req.query.userId || req.userId;
     const user = await authRepository.findUserById(userId);
 
-    if (!user || !['admin', 'super-admin', 'product-manager', 'support'].includes(normalizeRole(user.role))) {
+    if (!user || user.role !== 'admin') {
       throw new AppError('Admin not found', 404);
     }
 
@@ -36,5 +36,4 @@ module.exports = {
   adminLogin,
   adminMe,
   authorizeAdmin: requireAdminAuth,
-  authorizeRoles: requireAdminRoles,
 };

@@ -84,10 +84,10 @@ const requireAdminAuth = async (req, res, next) => {
   }
 };
 
-const requireAdminRoles = (...roles) => (req, res, next) => {
-  const allowedRoles = roles.map(normalizeRole);
+const requireAdminRole = (...roles) => (req, res, next) => {
+  const allowedRoles = new Set(roles.map(normalizeRole));
 
-  if (!allowedRoles.includes(normalizeRole(req.user?.role))) {
+  if (!allowedRoles.has(normalizeRole(req.user?.role))) {
     return next(new AppError('Access denied', 403));
   }
 
@@ -95,12 +95,13 @@ const requireAdminRoles = (...roles) => (req, res, next) => {
 };
 
 module.exports = {
+  ADMIN_ROLES,
   USER_JWT_SECRET,
   ADMIN_JWT_SECRET,
   extractBearerToken,
   normalizeRole,
   requireUserAuth,
   requireAdminAuth,
-  requireAdminRoles,
-  requireAdminRole: requireAdminRoles,
+  requireAdminRole,
+  requireAdminRoles: requireAdminRole,
 };

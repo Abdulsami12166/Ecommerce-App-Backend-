@@ -33,35 +33,38 @@ const adminAccounts = [
   },
 ];
 
+const seedAdminAccount = async account => {
+  const existingUser = await User.findOne({email: account.email}).select('+password +tokenVersion');
+
+  if (existingUser) {
+    existingUser.name = account.name;
+    existingUser.role = account.role;
+    existingUser.blocked = false;
+    existingUser.isVerified = true;
+    existingUser.password = account.password;
+    existingUser.tokenVersion = (existingUser.tokenVersion || 0) + 1;
+
+    await existingUser.save();
+    return {email: account.email, role: account.role, status: 'updated'};
+  }
+
+  await User.create({
+    name: account.name,
+    email: account.email,
+    password: account.password,
+    role: account.role,
+    isVerified: true,
+    blocked: false,
+  });
+
+  return {email: account.email, role: account.role, status: 'created'};
+};
+
 const seedAdmin = async () => {
   const results = [];
 
   for (const account of adminAccounts) {
-    const email = account.email.trim().toLowerCase();
-    const existingUser = await User.findOne({email}).select('+password +tokenVersion');
-
-    if (existingUser) {
-      existingUser.name = account.name;
-      existingUser.role = account.role;
-      existingUser.password = account.password;
-      existingUser.blocked = false;
-      existingUser.isVerified = true;
-      existingUser.tokenVersion = (existingUser.tokenVersion || 0) + 1;
-      await existingUser.save();
-      results.push({email, role: account.role, status: 'updated'});
-      continue;
-    }
-
-    await User.create({
-      name: account.name,
-      email,
-      password: account.password,
-      role: account.role,
-      isVerified: true,
-      blocked: false,
-    });
-
-    results.push({email, role: account.role, status: 'created'});
+    results.push(await seedAdminAccount(account));
   }
 
   console.table(results);

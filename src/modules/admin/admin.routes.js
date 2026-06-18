@@ -154,7 +154,7 @@ router.post('/orders', requireAdminAuth, requireAdminRole('admin', 'super-admin'
 router.patch('/orders/:id/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager'), adminController.updateOrderStatus);
 router.delete('/orders/:id', requireAdminAuth, requireAdminRole('admin', 'super-admin'), adminController.deleteOrder);
 
-// Order timeline
+// Order timeline routes
 router.get('/orders/:orderId/timeline', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager', 'support'), adminController.getOrderTimeline);
 router.post('/orders/:orderId/timeline/event', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'product-manager', 'support'), adminController.addOrderTimelineEvent);
 

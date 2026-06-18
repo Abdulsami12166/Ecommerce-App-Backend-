@@ -8,14 +8,17 @@ require('dotenv').config();
 const { registerRoutes } = require('./routes');
 const { requestLogger } = require('../shared/middleware/requestLogger');
 const { notFound, errorHandler } = require('../shared/middleware/errorHandler');
-const { corsOptions } = require('../shared/utils/corsOptions');
 const { logger } = require('../shared/utils/logger');
 
 const createExpressApp = () => {
   const app = express();
 
-  console.log('=== EXPRESS APP STARTUP: backend-only branch ===');
-  app.use(cors(corsOptions));
+  app.use(
+    cors({
+      origin: process.env.CLIENT_URL || '*',
+      credentials: true,
+    }),
+  );
 
   app.use(express.json({ limit: '5mb' }));
   app.use(express.urlencoded({ extended: true }));
@@ -25,7 +28,7 @@ const createExpressApp = () => {
 
   registerRoutes(app);
 
-  // Debug: list registered routes to help diagnose 404s for support endpoints
+  // Log registered routes for debugging (helps identify missing endpoints)
   try {
     const routes = [];
     (app._router && app._router.stack || []).forEach(mw => {
@@ -45,6 +48,33 @@ const createExpressApp = () => {
   } catch (err) {
     logger.warn('Failed to list registered routes', { error: err.message });
   }
+
+  // Diagnostic: log detailed info for any incoming /api/v1/support requests
+  app.use((req, res, next) => {
+    try {
+      if (String(req.originalUrl || '').startsWith('/api/v1/support')) {
+        // Collect router stack summary
+        const stack = (app._router && app._router.stack || []).map(mw => {
+          if (mw.route && mw.route.path) return { path: mw.route.path, methods: Object.keys(mw.route.methods) };
+          if (mw.name === 'router' && mw.handle && mw.handle.stack) {
+            return mw.handle.stack.filter(r => r.route).map(r => ({ path: r.route.path, methods: Object.keys(r.route.methods) }));
+          }
+          return { name: mw.name };
+        });
+
+        logger.info('Support request diagnostic', {
+          method: req.method,
+          url: req.originalUrl,
+          headers: { authorization: !!req.headers.authorization },
+          routerStackSummary: stack,
+        });
+      }
+    } catch (e) {
+      logger.warn('Support diagnostic failed', { error: e.message });
+    }
+
+    return next();
+  });
 
   app.use(notFound);
   app.use(errorHandler);

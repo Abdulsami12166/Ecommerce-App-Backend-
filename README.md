@@ -9,6 +9,7 @@ The old separate admin backend has been merged here. Deploy only this service.
 
 ## Run locally
 ```powershell
+cd backend
 copy .env.example .env
 npm run dev
 ```
@@ -20,6 +21,7 @@ npm run dev
 
 ## Create the real admin user
 ```powershell
+cd backend
 $env:ADMIN_SEED_EMAIL="admin@example.com"
 $env:ADMIN_SEED_PASSWORD="ReplaceWithStrongPassword123"
 $env:ADMIN_SEED_NAME="Primary Admin"
