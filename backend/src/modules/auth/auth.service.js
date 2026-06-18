@@ -41,7 +41,7 @@ const createAdminToken = user =>
     ADMIN_JWT_SECRET,
     { expiresIn: '1d' },
   );
-const ADMIN_ROLES = new Set(['admin', 'super-admin', 'product-manager', 'support']);
+const ADMIN_ROLES = new Set(['admin', 'super-admin', 'product-manager', 'inventory-manager', 'support', 'finance-manager', 'customer-service']);
 
 const sendOtpMessage = async (email, otpCode) => {
   try {

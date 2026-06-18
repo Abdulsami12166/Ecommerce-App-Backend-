@@ -6,7 +6,7 @@ export const API_CONFIG = {
   // Production ecommerce backend on Render.
   publicBaseUrl: 'https://ecommerce-app-backend-1kn0.onrender.com/api/v1',
   publicSocketUrl: 'https://ecommerce-app-backend-1kn0.onrender.com',
-  publicTrackingSocketUrl: 'https://backend-admin-qe72.onrender.com',
+  publicTrackingSocketUrl: 'https://ecommerce-app-backend-1kn0.onrender.com',
 
   // Local ecommerce backend for Android emulator testing.
   localBaseUrl: 'http://10.0.2.2:5001/api/v1',
