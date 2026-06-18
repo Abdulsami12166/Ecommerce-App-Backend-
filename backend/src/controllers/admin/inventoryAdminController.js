@@ -36,7 +36,7 @@ exports.getAllInventory = async (req, res) => {
 
     res.json({
       success: true,
-      data: inventory,
+      data: { inventory },
       pagination: {
         total,
         page: parseInt(page),
@@ -63,7 +63,7 @@ exports.getProductInventory = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Inventory not found' });
     }
 
-    res.json({ success: true, data: inventory });
+    res.json({ success: true, data: { inventory } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -149,7 +149,7 @@ exports.updateReorderSettings = async (req, res) => {
     inventory.reorderQuantity = reorderQuantity;
     await inventory.save();
 
-    res.json({ success: true, data: inventory, message: 'Reorder settings updated' });
+    res.json({ success: true, data: { inventory }, message: 'Reorder settings updated' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

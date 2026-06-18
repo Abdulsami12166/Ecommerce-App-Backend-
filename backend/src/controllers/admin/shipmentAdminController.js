@@ -194,7 +194,7 @@ exports.getTrackingHistory = async (req, res) => {
     return sendSuccess(res, 200, 'Shipment tracking history fetched successfully', {
       trackingNumber: shipment.trackingNumber,
       currentStatus: shipment.status,
-      events: shipment.trackingEvents.sort((a, b) => b.timestamp - a.timestamp),
+      trackingEvents: shipment.trackingEvents.sort((a, b) => b.timestamp - a.timestamp),
     });
   } catch (error) {
     return sendServerError(res, error.message, error.stack);
@@ -257,8 +257,13 @@ exports.getShipmentStats = async (req, res) => {
       }
     ]);
 
+    const byStatus = stats.reduce((acc, s) => ({ ...acc, [s._id]: s.count }), {});
     return sendSuccess(res, 200, 'Shipment statistics fetched successfully', {
-      byStatus: stats.reduce((acc, s) => ({ ...acc, [s._id]: s.count }), {}),
+      byStatus,
+      pending: byStatus.pending || 0,
+      inTransit: byStatus.in_transit || 0,
+      delivered: byStatus.delivered || 0,
+      failed: byStatus.failed || 0,
       total,
       avgDeliveryTime: avgDeliveryTime[0]?.avgDays || 0,
     });
