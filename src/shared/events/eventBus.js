@@ -101,28 +101,6 @@ const attachSocketServer = (httpServer, app) => {
 
 const getIo = app => app.get('io');
 
-const emitToAdmins = (app, eventName, data) => {
-  const io = getIo(app);
-  if (io) {
-    io.to(socketEvents.ROOMS.ADMINS).emit(eventName, data);
-  }
-};
-
-const emitToUser = (app, userId, eventName, data) => {
-  const io = getIo(app);
-  if (io) {
-    io.to(socketEvents.ROOMS.user(userId)).emit(eventName, data);
-  }
-};
-
-module.exports = {
-  attachSocketServer,
-  getIo,
-  emitToAdmins,
-  emitToUser,
-  socketEvents,
-};
-
 const emitToAdmins = (app, event, payload) => {
   const io = getIo(app);
   if (!io) return;
@@ -143,6 +121,7 @@ const emitToUser = (app, userId, event, payload) => {
 
 module.exports = {
   attachSocketServer,
+  getIo,
   emitToAll,
   emitToAdmins,
   emitToUser,
