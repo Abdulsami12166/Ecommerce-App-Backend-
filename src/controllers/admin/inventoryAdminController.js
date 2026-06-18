@@ -6,20 +6,33 @@ const syncInventoryWithProducts = async () => {
   try {
     const products = await Product.find({}).select('_id stock');
     const existingInventories = await Inventory.find({}).select('product');
-    const existingProductIds = new Set(existingInventories.map(inv => String(inv.product)));
+    const existingProductIds = new Set(
+      existingInventories
+        .map(inv => inv.product ? String(inv.product) : null)
+        .filter(Boolean)
+    );
 
-    const missingProducts = products.filter(p => !existingProductIds.has(String(p._id)));
-    if (missingProducts.length > 0) {
-      const bulkDocs = missingProducts.map(p => ({
-        product: p._id,
-        currentStock: p.stock || 0,
-        availableStock: p.stock || 0,
-        reorderLevel: 10,
-        reorderQuantity: 50,
-        lowStockAlert: (p.stock || 0) <= 10,
-        outOfStockAlert: (p.stock || 0) === 0
-      }));
-      await Inventory.insertMany(bulkDocs, { ordered: false });
+    const missingProducts = products.filter(p => p && p._id && !existingProductIds.has(String(p._id)));
+    for (const p of missingProducts) {
+      try {
+        await Inventory.findOneAndUpdate(
+          { product: p._id },
+          {
+            $setOnInsert: {
+              product: p._id,
+              currentStock: p.stock || 0,
+              availableStock: p.stock || 0,
+              reorderLevel: 10,
+              reorderQuantity: 50,
+              lowStockAlert: (p.stock || 0) <= 10,
+              outOfStockAlert: (p.stock || 0) === 0
+            }
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      } catch (singleErr) {
+        console.error(`Error syncing product ${p._id}:`, singleErr.message);
+      }
     }
   } catch (err) {
     console.error('Error syncing inventory with products:', err);

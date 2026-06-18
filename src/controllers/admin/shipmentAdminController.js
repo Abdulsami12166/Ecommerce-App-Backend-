@@ -65,7 +65,11 @@ exports.getShipmentDetails = async (req, res) => {
     const shipment = await Shipment.findById(shipmentId)
       .populate({
         path: 'order',
-        populate: { path: 'user', select: 'name email phone' }
+        select: 'items totalAmount subtotal shippingFee taxAmount orderStatus razorpayOrderId user',
+        populate: [
+          { path: 'user', select: 'name email phone' },
+          { path: 'items.product', select: 'title images price' },
+        ],
       });
 
     if (!shipment) {
