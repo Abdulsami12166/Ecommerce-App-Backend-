@@ -10,7 +10,7 @@ const registerRoutes = app => {
   app.get('/', (req, res) => {
     res.json({
       success: true,
-      message: 'Ecommerce backend is running',
+      message: 'Ecommerce backend is running - v2',
     });
   });
 
