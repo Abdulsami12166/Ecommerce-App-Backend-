@@ -92,15 +92,12 @@ router.get('/shipments/status/:status', requireAdminAuth, authorizePermission('o
 router.get('/shipments/stats/overview', requireAdminAuth, authorizePermission('analytics:view'), shipmentController.getShipmentStats);
 
 // ============ TICKETS ============
-router.get('/tickets', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllTickets);
-router.get('/tickets/:ticketId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAdminTicketDetail);
+router.get('/tickets', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), ticketController.getAllTickets);
+router.get('/tickets/:ticketId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), ticketController.getTicketDetails);
 router.post('/tickets/:ticketId/message', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.addAdminMessage);
-router.patch('/tickets/:ticketId/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.updateAdminTicketStatus);
-router.post('/tickets/:ticketId/assign', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.assignTicket);
-router.post('/tickets/:ticketId/escalate', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), (req, res, next) => {
-  req.body.status = 'escalated';
-  return supportController.updateAdminTicketStatus(req, res, next);
-});
+router.patch('/tickets/:ticketId/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), ticketController.updateTicketStatus);
+router.post('/tickets/:ticketId/assign', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), ticketController.assignTicket);
+router.post('/tickets/:ticketId/escalate', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), ticketController.escalateTicket);
 router.get('/tickets/stats/overview', requireAdminAuth, authorizePermission('analytics:view'), ticketController.getTicketStats);
 
 // ============ RETURNS ============

@@ -85,26 +85,13 @@ exports.updateStock = async (req, res) => {
 
     const previousStock = inventory.currentStock;
 
-    // Update stock based on type
-    if (type === 'in') {
-      inventory.currentStock += quantity;
-      inventory.lastRestockedAt = new Date();
-      inventory.lastRestockedQuantity = quantity;
-    } else if (type === 'out') {
-      inventory.currentStock = Math.max(0, inventory.currentStock - quantity);
-    } else if (type === 'adjustment') {
-      inventory.currentStock = quantity;
-    }
-
-    // Record movement
-    inventory.stockMovements.push({
+    // Use the model's addMovement method which handles stock updates + saves
+    await inventory.addMovement({
       type,
       quantity,
       reason: reason || `${type} movement`,
-      createdBy: req.adminUser._id
+      performedBy: req.adminUser._id,
     });
-
-    await inventory.save();
 
     // Log audit
     await AuditLog.create({

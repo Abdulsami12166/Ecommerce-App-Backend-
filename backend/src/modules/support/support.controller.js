@@ -395,7 +395,7 @@ const supportController = {
 
       const messagePayload = {
         senderType: 'admin',
-        sender: req.user._id,
+        sender: req.adminUser?._id || req.user?._id,
         message: message.trim(),
         attachments: Array.isArray(attachments) ? attachments : [],
       };
@@ -428,7 +428,8 @@ const supportController = {
 
   assignTicket: async (req, res) => {
     try {
-      const ticket = await ticketsRepository.assignTicket(req.params.ticketId, req.body.adminId || req.user._id);
+      const assignee = req.body.adminId || req.adminUser?._id || req.user?._id;
+      const ticket = await ticketsRepository.assignTicket(req.params.ticketId, assignee);
       emitToAdmins(req.app, socketEvents.DOMAIN.TICKET_UPDATED, { ticketId: ticket._id, orderId: ticket.order, assignedTo: ticket.assignedTo });
       return sendSuccessResponse(res, { ticket }, 'Ticket assigned successfully');
     } catch (error) {
