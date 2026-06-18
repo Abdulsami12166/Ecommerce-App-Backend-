@@ -1,4 +1,9 @@
 {
+  "scripts": {
+    "postinstall": "npm install --prefix backend",
+    "build": "echo 'No build step required for backend'",
+    "start": "npm start --prefix backend"
+  },
   "dependencies": {
     "@react-native-firebase/messaging": "^24.1.1"
   }
