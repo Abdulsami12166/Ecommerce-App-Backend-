@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const returnsController = require('./returns.controller');
-const { authenticateUser } = require('../../middleware/auth');
+const { requireUserAuth } = require('../../shared/middleware/auth');
 
 // User routes
-router.post('/', authenticateUser, returnsController.createReturnRequest);
-router.get('/', authenticateUser, returnsController.getUserReturns);
-router.get('/:returnId', authenticateUser, returnsController.getReturnDetail);
+router.post('/', requireUserAuth, returnsController.createReturnRequest);
+router.get('/', requireUserAuth, returnsController.getUserReturns);
+router.get('/:returnId', requireUserAuth, returnsController.getReturnDetail);
 
 // Admin routes
-router.get('/admin/all', authenticateUser, returnsController.getAllReturns);
-router.patch('/:returnId/status', authenticateUser, returnsController.updateReturnStatus);
+router.get('/admin/all', requireUserAuth, returnsController.getAllReturns);
+router.patch('/:returnId/status', requireUserAuth, returnsController.updateReturnStatus);
 
 module.exports = router;

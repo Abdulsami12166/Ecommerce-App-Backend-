@@ -30,10 +30,14 @@ const extractBearerToken = req => {
 };
 
 const attachUserFromToken = async (req, decoded) => {
-  const user = await User.findById(decoded.id).select('+tokenVersion');
+  const user = await User.findById(decoded.id).select('+tokenVersion blocked');
 
   if (!user) {
     throw new AppError('Account not found', 401);
+  }
+
+  if (user.blocked) {
+    throw new AppError('Your account has been blocked by an administrator', 403);
   }
 
   if ((user.tokenVersion || 0) !== (decoded.tokenVersion || 0)) {
@@ -41,6 +45,7 @@ const attachUserFromToken = async (req, decoded) => {
   }
 
   req.user = user;
+  req.adminUser = user;
   req.userId = String(user._id);
 };
 
@@ -98,4 +103,5 @@ module.exports = {
   requireUserAuth,
   requireAdminAuth,
   requireAdminRole,
+  requireAdminRoles: requireAdminRole,
 };

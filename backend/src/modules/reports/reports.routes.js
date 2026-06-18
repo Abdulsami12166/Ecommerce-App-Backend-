@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const reportsController = require('./reports.controller');
-const { authenticateAdmin } = require('../../middleware/auth');
+const { requireAdminAuth } = require('../../shared/middleware/auth');
 
 // All report routes require admin authentication
-router.use(authenticateAdmin);
+router.use(requireAdminAuth);
 
 // Get reports
 router.get('/sales', reportsController.getSalesReport);

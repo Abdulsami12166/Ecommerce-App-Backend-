@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireUserAuth, requireAdminAuth, requireAdminRole } = require('../../shared/middleware/auth');
 const supportController = require('./support.controller');
+const replacementsController = require('../replacements/replacements.controller');
 
 const router = express.Router();
 
@@ -23,6 +24,11 @@ router.get('/refunds/:refundId', requireUserAuth, supportController.getRefundDet
 router.post('/returns', requireUserAuth, supportController.createReturnRequest);
 router.get('/returns', requireUserAuth, supportController.getUserReturns);
 router.get('/returns/:returnId', requireUserAuth, supportController.getReturnDetail);
+
+// Replacement request routes
+router.post('/replacements', requireUserAuth, replacementsController.createReplacementRequest);
+router.get('/replacements', requireUserAuth, replacementsController.getUserReplacements);
+router.get('/replacements/:replacementId', requireUserAuth, replacementsController.getReplacementDetail);
 
 // Admin routes
 router.get('/admin/tickets', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllTickets);

@@ -67,7 +67,7 @@ const RaiseTicketScreen = ({ navigation, route }) => {
         priority,
         email: email.trim(),
         ...(prefillProductId && { relatedProduct: prefillProductId }),
-        ...(prefillOrderId && { relatedOrder: prefillOrderId }),
+        ...(prefillOrderId && { orderId: prefillOrderId, relatedOrder: prefillOrderId }),
       }, authToken);
 
       Alert.alert(

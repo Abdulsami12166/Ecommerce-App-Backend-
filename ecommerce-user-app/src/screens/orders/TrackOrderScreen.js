@@ -18,12 +18,51 @@ import { useAppStore } from '../../context/AppContext'
 import { getCurrentLocation, getLocationPermissionStatus } from '../../services/locationService'
 import { useThemeColors } from '../../theme/colors'
 import spacing, { radius } from '../../theme/spacing'
+import { refundApi, returnApi, replacementApi } from '../../services/api'
 
 const TrackOrderScreen = ({ navigation, route }) => {
   const colors = useThemeColors()
   const styles = createStyles(colors)
-  const { openSupportChatForProduct, orders } = useAppStore()
+  const { openSupportChatForProduct, orders, authToken } = useAppStore()
   const activeOrder = orders.find(order => order.id === route.params?.orderId) || orders[0] || null
+
+  const [activeReturn, setActiveReturn] = useState(null)
+  const [activeRefund, setActiveRefund] = useState(null)
+  const [activeReplacement, setActiveReplacement] = useState(null)
+
+  useEffect(() => {
+    if (!authToken || !activeOrder) return
+
+    const fetchOrderSupportStatus = async () => {
+      try {
+        const [returnsRes, refundsRes, replacementsRes] = await Promise.all([
+          returnApi.getReturns(authToken).catch(() => ({ data: { returns: [] } })),
+          refundApi.getRefunds(authToken).catch(() => ({ data: { refunds: [] } })),
+          replacementApi.getReplacements(authToken).catch(() => ({ data: { replacements: [] } })),
+        ])
+
+        const orderId = String(activeOrder.id || activeOrder._id)
+
+        const foundReturn = (returnsRes.data?.returns || []).find(
+          r => String(r.order?._id || r.order || r.orderId) === orderId
+        )
+        const foundRefund = (refundsRes.data?.refunds || []).find(
+          r => String(r.order?._id || r.order || r.orderId) === orderId
+        )
+        const foundReplacement = (replacementsRes.data?.replacements || []).find(
+          r => String(r.order?._id || r.order || r.orderId) === orderId
+        )
+
+        setActiveReturn(foundReturn || null)
+        setActiveRefund(foundRefund || null)
+        setActiveReplacement(foundReplacement || null)
+      } catch (error) {
+        console.error('Error fetching support status:', error)
+      }
+    }
+
+    fetchOrderSupportStatus()
+  }, [activeOrder, authToken])
   const orderTimeline = React.useMemo(() => {
     if (!activeOrder) {
       return []
@@ -473,6 +512,99 @@ const TrackOrderScreen = ({ navigation, route }) => {
               </View>
             </View>
           ))}
+        </View>
+
+        {/* Help actions - Return, Refund, Replacement, Ticket */}
+        <View style={styles.helpSection}>
+          <Text style={styles.helpTitle}>Need help with this order?</Text>
+
+          {/* Display active status if any requests already exist */}
+          {(activeReturn || activeRefund || activeReplacement) && (
+            <View style={styles.statusDisplaySection}>
+              {activeReturn && (
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Return Request:</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[styles.statusBadge, { color: colors.primary }]}>{activeReturn.status}</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('ReturnTracking', { returnId: activeReturn._id })}>
+                      <Text style={styles.trackLink}>Track</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              {activeRefund && (
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Refund Request:</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[styles.statusBadge, { color: colors.primary }]}>{activeRefund.status}</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('RefundTracking', { refundId: activeRefund._id })}>
+                      <Text style={styles.trackLink}>Track</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              {activeReplacement && (
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Replacement Request:</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[styles.statusBadge, { color: colors.primary }]}>{activeReplacement.status}</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('ReplacementTracking', { replacementId: activeReplacement._id })}>
+                      <Text style={styles.trackLink}>Track</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              <View style={styles.divider} />
+            </View>
+          )}
+
+          <View style={styles.helpActions}>
+            {/* Show return/replacement options only if order is delivered/completed */}
+            {(activeOrder.statusGroup === 'completed' || activeOrder.status === 'delivered') ? (
+              <>
+                {!activeReturn && (
+                  <TouchableOpacity
+                    style={styles.helpButton}
+                    onPress={() => navigation.navigate('RequestReturn', { orderId: activeOrder.id })}
+                  >
+                    <Text style={styles.helpButtonIcon}>📦</Text>
+                    <Text style={styles.helpButtonLabel}>Return Item</Text>
+                  </TouchableOpacity>
+                )}
+                {!activeReplacement && (
+                  <TouchableOpacity
+                    style={styles.helpButton}
+                    onPress={() => navigation.navigate('RequestReplacement', { orderId: activeOrder.id })}
+                  >
+                    <Text style={styles.helpButtonIcon}>🔄</Text>
+                    <Text style={styles.helpButtonLabel}>Replace Item</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : null}
+            {!activeRefund && (
+              <TouchableOpacity
+                style={styles.helpButton}
+                onPress={() => navigation.navigate('RequestRefund', { orderId: activeOrder.id })}
+              >
+                <Text style={styles.helpButtonIcon}>💰</Text>
+                <Text style={styles.helpButtonLabel}>Request Refund</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={() =>
+                navigation.navigate('RaiseTicket', {
+                  orderId: activeOrder.id,
+                  orderCode: activeOrder.code,
+                  subject: `Issue with order ${activeOrder.code}`,
+                })
+              }
+            >
+              <Text style={styles.helpButtonIcon}>🎫</Text>
+              <Text style={styles.helpButtonLabel}>Raise Ticket</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <CustomButton title="View Orders" onPress={() => navigation.replace('Orders')} />
@@ -948,6 +1080,45 @@ const createStyles = colors => StyleSheet.create({
   stepStateTextDone: {
     color: colors.primary,
   },
+  helpSection: {
+    marginTop: spacing.xl,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.lg,
+  },
+  helpTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  helpActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  helpButton: {
+    flex: 1,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  helpButtonIcon: { fontSize: 24, marginBottom: spacing.sm },
+  helpButtonLabel: { fontSize: 11, fontWeight: '600', color: colors.text, textAlign: 'center' },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.md },
+  statusDisplaySection: { marginBottom: spacing.md },
+  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
+  statusLabel: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  statusBadge: { fontSize: 13, fontWeight: '800', textTransform: 'capitalize' },
+  trackLink: { color: colors.primary, fontSize: 13, fontWeight: '800', textDecorationLine: 'underline' },
 })
 
 export default TrackOrderScreen

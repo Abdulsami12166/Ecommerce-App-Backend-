@@ -34,8 +34,12 @@ const RequestReplacementScreen = ({ navigation, route }) => {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { orders, authToken } = useAppStore();
 
+  // Support pre-selecting from order/product context
+  const prefillOrderId = route.params?.orderId || null;
+  const prefillProductId = route.params?.productId || null;
+
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectedItems, setSelectedItems] = useState(prefillProductId ? [prefillProductId] : []);
   const [replacementProducts, setReplacementProducts] = useState({});
   const [selectedReason, setSelectedReason] = useState(null);
   const [comments, setComments] = useState('');
@@ -47,7 +51,20 @@ const RequestReplacementScreen = ({ navigation, route }) => {
     zipCode: '',
   });
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Select Order, 2: Select Items, 3: Select Replacement Products, 4: Select Reason, 5: Upload Images, 6: Pickup Address
+  const [step, setStep] = useState(prefillOrderId ? 2 : 1); // 1: Select Order, 2: Select Items, 3: Select Replacement Products, 4: Select Reason, 5: Upload Images, 6: Pickup Address
+
+  // Pre-select the order if orderId was passed in params
+  useEffect(() => {
+    if (prefillOrderId) {
+      const found = orders.find(o => String(o.id) === String(prefillOrderId) || String(o._id) === String(prefillOrderId));
+      if (found) {
+        setSelectedOrder(found);
+        if (prefillProductId) {
+          setSelectedItems([prefillProductId]);
+        }
+      }
+    }
+  }, [prefillOrderId, prefillProductId, orders]);
 
   const eligibleOrders = useMemo(
     () => orders.filter(order => 

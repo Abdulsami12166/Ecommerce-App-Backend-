@@ -126,4 +126,5 @@ module.exports = {
   emitToAll,
   emitToAdmins,
   emitToUser,
+  socketEvents,
 };
