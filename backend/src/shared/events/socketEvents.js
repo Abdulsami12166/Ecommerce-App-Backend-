@@ -13,6 +13,7 @@ const socketEvents = {
     PRODUCT_UPDATED: 'product.updated',
     ADMIN_ACTIVITY_CREATED: 'admin.activity.created',
     ADMIN_FORCE_LOGOUT: 'admin.user.force_logout',
+    FEATURE_TOGGLE_UPDATED: 'admin.feature_toggle.updated',
     TICKET_CREATED: 'support.ticket.created',
     TICKET_UPDATED: 'support.ticket.updated',
     TICKET_MESSAGE_ADDED: 'support.ticket.message_added',

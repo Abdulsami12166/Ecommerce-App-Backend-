@@ -3,6 +3,7 @@ const AdminSession = require('../../models/AdminSession');
 const AuditLog = require('../../models/AuditLog');
 const User = require('../../models/User');
 const UserActivity = require('../../models/UserActivity');
+const { emitToAdmins, emitToUser, socketEvents } = require('../../utils/eventBus');
 
 const sanitizeSearch = value => typeof value === 'string' && value.trim() ? value.trim() : null;
 
@@ -162,6 +163,15 @@ exports.forceLogout = asyncHandler(async (req, res) => {
       sessionToken: session.sessionToken,
       adminUser: session.adminUser,
     },
+  });
+
+  emitToAdmins(req.app, socketEvents.DOMAIN.ADMIN_FORCE_LOGOUT, {
+    sessionId,
+    adminId: session.adminUser
+  });
+  // Also emit to the specific admin user's room to disconnect them immediately if they are connected
+  emitToUser(req.app, session.adminUser, socketEvents.DOMAIN.ADMIN_FORCE_LOGOUT, {
+    sessionId
   });
 
   res.status(200).json({

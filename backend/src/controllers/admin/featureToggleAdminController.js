@@ -1,5 +1,6 @@
 const FeatureToggle = require('../../models/FeatureToggle');
 const AuditLog = require('../../models/AuditLog');
+const { emitToAdmins, emitToAll, socketEvents } = require('../../utils/eventBus');
 
 /**
  * Get all feature toggles
@@ -91,6 +92,11 @@ exports.enableFeature = async (req, res) => {
       severity: rolloutPercentage < 100 ? 'info' : 'warning'
     });
 
+    // Emit real-time event
+    const payload = { name, isEnabled: true, rolloutPercentage };
+    emitToAdmins(req.app, socketEvents.DOMAIN.FEATURE_TOGGLE_UPDATED, payload);
+    emitToAll(req.app, socketEvents.DOMAIN.FEATURE_TOGGLE_UPDATED, payload);
+
     res.json({ success: true, data: toggle, message: `Feature '${name}' enabled` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -124,6 +130,11 @@ exports.disableFeature = async (req, res) => {
       ipAddress: req.ip,
       severity: 'warning'
     });
+
+    // Emit real-time event
+    const payload = { name, isEnabled: false };
+    emitToAdmins(req.app, socketEvents.DOMAIN.FEATURE_TOGGLE_UPDATED, payload);
+    emitToAll(req.app, socketEvents.DOMAIN.FEATURE_TOGGLE_UPDATED, payload);
 
     res.json({ success: true, data: toggle, message: `Feature '${name}' disabled` });
   } catch (error) {

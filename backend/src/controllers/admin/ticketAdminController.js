@@ -384,9 +384,11 @@ exports.getTicketStats = async (req, res) => {
     res.json({
       success: true,
       data: {
-        ...stats[0],
-        total,
-        avgRating: avgRating[0]?.avgRating?.toFixed(2) || 0
+        stats: {
+          ...stats[0],
+          total,
+          avgRating: avgRating[0]?.avgRating?.toFixed(2) || 0
+        }
       }
     });
   } catch (error) {
