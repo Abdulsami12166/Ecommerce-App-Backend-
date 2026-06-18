@@ -1,7 +1,7 @@
 const Order = require('../../models/Order');
 const User = require('../../models/User');
 const Product = require('../../models/Product');
-const Ticket = require('../../models/Ticket');
+const Ticket = require('../../models/SupportTicket');
 const Inventory = require('../../models/Inventory');
 
 const reportsRepository = {
