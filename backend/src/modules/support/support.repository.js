@@ -82,9 +82,13 @@ const refundsRepository = {
     RefundRequest.find(filter || {})
       .sort({ createdAt: -1 })
       .populate('user', 'name email')
-      .populate('order', 'orderStatus totalAmount createdAt'),
+      .populate('order', 'orderStatus totalAmount createdAt')
+      .populate('items', 'title name price images'),
   getRefundRequestById: refundId =>
-    RefundRequest.findById(refundId).populate('user', 'name email').populate('order', 'orderStatus totalAmount createdAt'),
+    RefundRequest.findById(refundId)
+      .populate('user', 'name email')
+      .populate('order', 'orderStatus totalAmount createdAt')
+      .populate('items', 'title name price images'),
   saveRefundRequest: refundRequest => refundRequest.save(),
   updateRefundStatus: async (refundId, status, notes, paymentDetails) => {
     const refund = await RefundRequest.findById(refundId);

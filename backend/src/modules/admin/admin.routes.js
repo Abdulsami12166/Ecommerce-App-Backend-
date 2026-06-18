@@ -376,6 +376,7 @@ router.delete('/notifications/event-mappings/:mappingId', requireAdminAuth, auth
 router.get('/notifications/logs', requireAdminAuth, authorizePermission('notifications:view'), notificationController.getAllNotificationLogs);
 router.get('/notifications/logs/:logId', requireAdminAuth, authorizePermission('notifications:view'), notificationController.getNotificationLogDetails);
 router.post('/notifications/logs', requireAdminAuth, authorizePermission('notifications:manage'), notificationController.createNotificationLog);
+router.post('/notifications/send', requireAdminAuth, authorizePermission('notifications:manage'), notificationController.sendDirectNotification);
 router.get('/notifications/stats', requireAdminAuth, authorizePermission('analytics:view'), notificationController.getNotificationStats);
 
 router.get('/notifications/marketing-rules', requireAdminAuth, authorizePermission('marketing:view'), notificationController.getAllMarketingRules);
