@@ -1,6 +1,7 @@
 const Inventory = require('../../models/Inventory');
 const Product = require('../../models/Product');
 const AuditLog = require('../../models/AuditLog');
+const { emitToAdmins, socketEvents } = require('../../shared/events/eventBus');
 
 const syncInventoryWithProducts = async () => {
   try {
@@ -45,7 +46,7 @@ const syncInventoryWithProducts = async () => {
 exports.getAllInventory = async (req, res) => {
   try {
     await syncInventoryWithProducts();
-    const { page = 1, limit = 20, search, lowStock, sortBy = '-currentStock' } = req.query;
+    const { page = 1, limit = 200, search, lowStock, sortBy = '-currentStock' } = req.query;
     const skip = (page - 1) * limit;
 
     let query = {};
@@ -69,8 +70,7 @@ exports.getAllInventory = async (req, res) => {
 
     const total = await Inventory.countDocuments(query);
     const inventory = await Inventory.find(query)
-      .populate('product', 'title sku category price')
-      .populate('lastRestockedBy', 'name email')
+      .populate('product', 'title sku category price images')
       .sort(sortBy)
       .skip(skip)
       .limit(parseInt(limit));
@@ -148,6 +148,19 @@ exports.updateStock = async (req, res) => {
       userAgent: req.get('user-agent'),
       resourcePath: `/api/admin/inventory/${productId}/stock`
     });
+
+    // Emit real-time inventory update to all admin clients
+    try {
+      const populated = await Inventory.findById(inventory._id).populate('product', 'title sku category price images');
+      emitToAdmins(req.app, socketEvents.DOMAIN.INVENTORY_UPDATED, { inventory: populated });
+      if (populated && populated.lowStockAlert) {
+        emitToAdmins(req.app, socketEvents.DOMAIN.LOW_STOCK_ALERT, {
+          product: populated.product,
+          currentStock: populated.currentStock,
+          reorderLevel: populated.reorderLevel,
+        });
+      }
+    } catch (_) { /* socket emit failure is non-fatal */ }
 
     res.json({ 
       success: true, 

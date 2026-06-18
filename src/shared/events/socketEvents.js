@@ -14,6 +14,15 @@ const socketEvents = {
     ADMIN_ACTIVITY_CREATED: 'admin.activity.created',
     ADMIN_FORCE_LOGOUT: 'admin.user.force_logout',
     FEATURE_TOGGLE_UPDATED: 'admin.feature_toggle.updated',
+    // Inventory real-time events
+    INVENTORY_UPDATED: 'inventory.updated',
+    LOW_STOCK_ALERT: 'inventory.low_stock',
+    // Shipment real-time events
+    SHIPMENT_CREATED: 'shipment.created',
+    SHIPMENT_UPDATED: 'shipment.updated',
+    // Audit log events
+    AUDIT_LOG_CREATED: 'audit.log.created',
+    // Support events
     TICKET_CREATED: 'support.ticket.created',
     TICKET_UPDATED: 'support.ticket.updated',
     TICKET_MESSAGE_ADDED: 'support.ticket.message_added',

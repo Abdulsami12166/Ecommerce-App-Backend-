@@ -1,11 +1,46 @@
 const StoreSetting = require('../../models/StoreSetting');
 const AuditLog = require('../../models/AuditLog');
 
+const DEFAULT_SETTINGS = [
+  { key: 'store.name', label: 'Store Name', value: 'My Ecommerce Store', type: 'string', category: 'general', section: 'brand', description: 'The public name of your store' },
+  { key: 'store.tagline', label: 'Store Tagline', value: 'Shop the best products online', type: 'string', category: 'general', section: 'brand', description: 'Short description shown on the homepage' },
+  { key: 'store.email', label: 'Support Email', value: 'support@store.com', type: 'string', category: 'general', section: 'contact', description: 'Customer support email address' },
+  { key: 'store.phone', label: 'Support Phone', value: '+91-9999999999', type: 'string', category: 'general', section: 'contact', description: 'Customer support phone number' },
+  { key: 'store.currency', label: 'Currency', value: 'INR', type: 'string', category: 'general', section: 'locale', description: 'Store currency code' },
+  { key: 'store.language', label: 'Language', value: 'en', type: 'string', category: 'general', section: 'locale', description: 'Default store language' },
+  { key: 'shipping.free_threshold', label: 'Free Shipping Threshold (₹)', value: 500, type: 'number', category: 'shipping', section: 'fees', description: 'Orders above this amount get free shipping' },
+  { key: 'shipping.default_fee', label: 'Default Shipping Fee (₹)', value: 49, type: 'number', category: 'shipping', section: 'fees', description: 'Flat rate shipping fee' },
+  { key: 'shipping.express_fee', label: 'Express Shipping Fee (₹)', value: 99, type: 'number', category: 'shipping', section: 'fees', description: 'Express delivery surcharge' },
+  { key: 'shipping.estimated_days', label: 'Estimated Delivery (days)', value: 5, type: 'number', category: 'shipping', section: 'delivery', description: 'Standard delivery time in business days' },
+  { key: 'payment.cod_enabled', label: 'Cash On Delivery', value: true, type: 'boolean', category: 'payment', section: 'methods', description: 'Enable COD payment option' },
+  { key: 'payment.razorpay_enabled', label: 'Razorpay Payments', value: true, type: 'boolean', category: 'payment', section: 'methods', description: 'Enable Razorpay payment gateway' },
+  { key: 'payment.min_order_amount', label: 'Minimum Order Amount (₹)', value: 100, type: 'number', category: 'payment', section: 'limits', description: 'Minimum cart value to place an order' },
+  { key: 'tax.gst_enabled', label: 'GST Enabled', value: true, type: 'boolean', category: 'tax', section: 'gst', description: 'Apply GST to orders' },
+  { key: 'tax.gst_rate', label: 'Default GST Rate (%)', value: 18, type: 'number', category: 'tax', section: 'gst', description: 'GST percentage applied to taxable products' },
+  { key: 'tax.tax_inclusive', label: 'Prices Include Tax', value: false, type: 'boolean', category: 'tax', section: 'gst', description: 'Whether product prices already include GST' },
+  { key: 'notifications.order_placed', label: 'Order Placed Email', value: true, type: 'boolean', category: 'notifications', section: 'email', description: 'Send confirmation email when order is placed' },
+  { key: 'notifications.order_shipped', label: 'Order Shipped Email', value: true, type: 'boolean', category: 'notifications', section: 'email', description: 'Notify customer when order ships' },
+  { key: 'notifications.low_stock_alert', label: 'Low Stock Alert', value: true, type: 'boolean', category: 'notifications', section: 'admin', description: 'Alert admin when stock falls below reorder level' },
+  { key: 'security.max_login_attempts', label: 'Max Login Attempts', value: 5, type: 'number', category: 'security', section: 'auth', description: 'Account locked after this many failed logins' },
+  { key: 'security.session_timeout', label: 'Session Timeout (hours)', value: 24, type: 'number', category: 'security', section: 'auth', description: 'Admin session expires after this many hours' },
+  { key: 'security.otp_expiry', label: 'OTP Expiry (minutes)', value: 10, type: 'number', category: 'security', section: 'auth', description: 'Time window for OTP validity' },
+  { key: 'performance.cache_ttl', label: 'Cache TTL (seconds)', value: 300, type: 'number', category: 'performance', section: 'cache', description: 'Time-to-live for cached API responses' },
+  { key: 'performance.products_per_page', label: 'Products Per Page', value: 20, type: 'number', category: 'performance', section: 'pagination', description: 'Number of products shown per page' },
+];
+
+const seedDefaultSettings = async () => {
+  const count = await StoreSetting.countDocuments();
+  if (count > 0) return;
+  await StoreSetting.insertMany(DEFAULT_SETTINGS.map(s => ({ ...s, isEditable: true })));
+};
+
 /**
  * Get all store settings grouped by category
  */
 exports.getAllSettings = async (req, res) => {
   try {
+    await seedDefaultSettings();
+
     const { category, section } = req.query;
 
     let query = {};
