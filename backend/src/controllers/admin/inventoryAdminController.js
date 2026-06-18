@@ -2,11 +2,36 @@ const Inventory = require('../../models/Inventory');
 const Product = require('../../models/Product');
 const AuditLog = require('../../models/AuditLog');
 
+const syncInventoryWithProducts = async () => {
+  try {
+    const products = await Product.find({}).select('_id stock');
+    const existingInventories = await Inventory.find({}).select('product');
+    const existingProductIds = new Set(existingInventories.map(inv => String(inv.product)));
+
+    const missingProducts = products.filter(p => !existingProductIds.has(String(p._id)));
+    if (missingProducts.length > 0) {
+      const bulkDocs = missingProducts.map(p => ({
+        product: p._id,
+        currentStock: p.stock || 0,
+        availableStock: p.stock || 0,
+        reorderLevel: 10,
+        reorderQuantity: 50,
+        lowStockAlert: (p.stock || 0) <= 10,
+        outOfStockAlert: (p.stock || 0) === 0
+      }));
+      await Inventory.insertMany(bulkDocs, { ordered: false });
+    }
+  } catch (err) {
+    console.error('Error syncing inventory with products:', err);
+  }
+};
+
 /**
  * Get all inventory items with pagination
  */
 exports.getAllInventory = async (req, res) => {
   try {
+    await syncInventoryWithProducts();
     const { page = 1, limit = 20, search, lowStock, sortBy = '-currentStock' } = req.query;
     const skip = (page - 1) * limit;
 
@@ -219,6 +244,7 @@ exports.getStockMovements = async (req, res) => {
  */
 exports.getInventoryStats = async (req, res) => {
   try {
+    await syncInventoryWithProducts();
     const totalProducts = await Inventory.countDocuments();
     const lowStockCount = await Inventory.countDocuments({
       $expr: { $lte: ['$currentStock', '$reorderLevel'] }
