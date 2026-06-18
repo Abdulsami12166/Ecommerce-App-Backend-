@@ -120,9 +120,39 @@ exports.createShipment = async (req, res) => {
 
     await shipment.save();
 
-    // Update order status
+    // Update order status and status history
     order.orderStatus = 'shipped';
+    order.statusHistory = [
+      ...(Array.isArray(order.statusHistory) ? order.statusHistory : []).filter(
+        item => item.status !== 'shipped',
+      ),
+      {
+        status: 'shipped',
+        label: 'Shipped',
+        timestamp: new Date(),
+      },
+    ];
     await order.save();
+
+    // Emit socket events for real-time tracking updates
+    const payload = {
+      orderId: String(order._id),
+      userId: String(order.user),
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      statusHistory: order.statusHistory || [],
+      updatedAt: order.updatedAt,
+    };
+
+    try {
+      const { emitToAdmins, emitToUser, socketEvents } = require('../../shared/events/eventBus');
+      emitToAdmins(req.app, socketEvents.LEGACY.ORDER_STATUS_CHANGED, payload);
+      emitToAdmins(req.app, socketEvents.DOMAIN.ORDER_UPDATED, payload);
+      emitToUser(req.app, order.user, socketEvents.DOMAIN.ORDER_UPDATED, payload);
+    } catch (socketErr) {
+      // Log socket error but don't fail the request
+      console.error('Socket emission failed in createShipment:', socketErr.message);
+    }
 
     await auditAction(req, 'create_shipment', 'shipment', shipment._id, null, shipment.toObject(), {
       resourcePath: `/api/admin/shipments/${orderId}`,
@@ -159,10 +189,64 @@ exports.updateTrackingStatus = async (req, res) => {
     // Update shipment status
     shipment.status = status;
 
-    if (status === 'delivered') {
+    // Map shipment status to orderStatus
+    let orderStatus = null;
+    if (status === 'packed') {
+      orderStatus = 'packed';
+    } else if (status === 'in_transit') {
+      orderStatus = 'shipped';
+    } else if (status === 'out_for_delivery') {
+      orderStatus = 'out-for-delivery';
+    } else if (status === 'delivered') {
+      orderStatus = 'delivered';
       shipment.actualDeliveryDate = new Date();
-      // Update order status
-      await Order.findByIdAndUpdate(shipment.order, { orderStatus: 'delivered' });
+    }
+
+    if (orderStatus) {
+      const order = await Order.findById(shipment.order);
+      if (order) {
+        order.orderStatus = orderStatus;
+
+        const ORDER_STATUS_LABELS = {
+          'order-confirmed': 'Order Confirmed',
+          packed: 'Packed',
+          shipped: 'Shipped',
+          'out-for-delivery': 'Out For Delivery',
+          delivered: 'Delivered',
+        };
+
+        order.statusHistory = [
+          ...(Array.isArray(order.statusHistory) ? order.statusHistory : []).filter(
+            item => item.status !== orderStatus,
+          ),
+          {
+            status: orderStatus,
+            label: ORDER_STATUS_LABELS[orderStatus] || orderStatus,
+            timestamp: new Date(),
+          },
+        ];
+
+        await order.save();
+
+        // Emit socket events for real-time tracking updates
+        const payload = {
+          orderId: String(order._id),
+          userId: String(order.user),
+          orderStatus: order.orderStatus,
+          paymentStatus: order.paymentStatus,
+          statusHistory: order.statusHistory || [],
+          updatedAt: order.updatedAt,
+        };
+
+        try {
+          const { emitToAdmins, emitToUser, socketEvents } = require('../../shared/events/eventBus');
+          emitToAdmins(req.app, socketEvents.LEGACY.ORDER_STATUS_CHANGED, payload);
+          emitToAdmins(req.app, socketEvents.DOMAIN.ORDER_UPDATED, payload);
+          emitToUser(req.app, order.user, socketEvents.DOMAIN.ORDER_UPDATED, payload);
+        } catch (socketErr) {
+          console.error('Socket emission failed in updateTrackingStatus:', socketErr.message);
+        }
+      }
     }
 
     await shipment.save();

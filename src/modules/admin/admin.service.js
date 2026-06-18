@@ -100,7 +100,7 @@ const normalizeUser = user => ({
   updatedAt: user.updatedAt,
 });
 
-const getUsers = async () => ({ users: await adminRepository.getAdmins() });
+const getUsers = async () => ({ users: await adminRepository.getUsers() });
 const getUserOrders = async userId => ({ orders: await adminRepository.getOrdersByUserId(userId) });
 
 const buildCustomerSummary = async user => {
