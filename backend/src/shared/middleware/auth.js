@@ -30,7 +30,7 @@ const extractBearerToken = req => {
 };
 
 const attachUserFromToken = async (req, decoded) => {
-  const user = await User.findById(decoded.id).select('+tokenVersion blocked');
+  const user = await User.findById(decoded.id).select('+tokenVersion');
 
   if (!user) {
     throw new AppError('Account not found', 401);
