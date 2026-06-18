@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
     wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
     isVerified: { type: Boolean, default: false },
     blocked: { type: Boolean, default: false },
+    fcmToken: { type: String, default: '' },
     otpCode: { type: String, select: false },
     otpExpiresAt: { type: Date, select: false },
     passwordResetCode: { type: String, select: false },

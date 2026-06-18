@@ -24,5 +24,6 @@ router.get('/profile', requireUserAuth, usersController.getProfile);
 router.put('/profile', requireUserAuth, usersController.updateProfile);
 router.post('/profile/avatar', requireUserAuth, upload.single('avatar'), usersController.uploadProfileAvatar);
 router.patch('/wishlist', requireUserAuth, usersController.toggleWishlist);
+router.patch('/fcm-token', requireUserAuth, usersController.updateFcmToken);
 
 module.exports = router;

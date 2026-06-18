@@ -125,6 +125,7 @@ export const userApi = {
   updateProfile: (payload, token) => put('/users/profile', payload, token),
   uploadProfileAvatar: (formData, token) => postMultipart('/users/profile/avatar', formData, token),
   toggleWishlist: (payload, token) => patch('/users/wishlist', payload, token),
+  updateFcmToken: (fcmToken, token) => patch('/users/fcm-token', { fcmToken }, token),
 };
 
 export const productApi = {

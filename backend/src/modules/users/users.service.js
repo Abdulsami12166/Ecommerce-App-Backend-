@@ -47,9 +47,18 @@ const toggleWishlist = async (userId, productId) => {
   return { wishlist: user.wishlist };
 };
 
+const updateFcmToken = async (userId, fcmToken) => {
+  const user = await usersRepository.findUserById(userId);
+  if (!user) throw new AppError('User not found', 404);
+  user.fcmToken = fcmToken || '';
+  await usersRepository.saveUser(user);
+  return { success: true };
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   updateProfileAvatar,
   toggleWishlist,
+  updateFcmToken,
 };

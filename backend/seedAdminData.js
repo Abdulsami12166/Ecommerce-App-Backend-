@@ -29,38 +29,39 @@ async function seedData() {
     // Seed Inventory
     if (await Inventory.countDocuments() === 0) {
       console.log('Seeding Inventory...');
-      await Inventory.create([
+      const products = await Product.find().limit(2);
+      const inventoryData = [
         {
-          product: product._id,
+          product: products[0]._id,
           currentStock: 5,
           reorderLevel: 10,
           reorderQuantity: 50,
           lastRestockedAt: new Date(),
           lastRestockedBy: admin._id,
           stockMovements: [{ type: 'in', quantity: 50, reason: 'Initial load', createdBy: admin._id }]
-        },
-        {
-          product: product._id, // Ideally another product
+        }
+      ];
+      if (products.length > 1) {
+        inventoryData.push({
+          product: products[1]._id,
           currentStock: 100,
           reorderLevel: 20,
           reorderQuantity: 100,
           lastRestockedAt: new Date(),
           lastRestockedBy: admin._id
-        }
-      ]);
+        });
+      }
+      await Inventory.create(inventoryData);
     }
 
     // Seed Shipment
     if (await Shipment.countDocuments() === 0) {
       const order = await Order.findOne() || await Order.create({
         user: user._id,
-        orderItems: [{ product: product._id, name: product.title, quantity: 1, price: product.price }],
-        shippingAddress: { address: '123 Test St', city: 'Testville', postalCode: '12345', country: 'Testland' },
-        paymentMethod: 'Card',
-        itemsPrice: product.price,
-        taxPrice: 0,
-        shippingPrice: 10,
-        totalPrice: product.price + 10,
+        items: [{ product: product._id, title: product.title, quantity: 1, price: product.price }],
+        subtotal: product.price,
+        totalAmount: product.price,
+        paymentMethod: 'card',
       });
 
       console.log('Seeding Shipments...');
@@ -68,10 +69,18 @@ async function seedData() {
         order: order._id,
         trackingNumber: 'TRK123456789',
         carrier: 'FedEx',
-        status: 'shipped',
-        shippedAt: new Date(),
+        status: 'in_transit',
         estimatedDeliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        trackingHistory: [{ status: 'shipped', location: 'Warehouse', description: 'Package left facility' }]
+        shippingAddress: {
+          name: 'John Doe',
+          phone: '+919999999999',
+          address: '123 Test St',
+          city: 'Testville',
+          state: 'Tamil Nadu',
+          postalCode: '12345',
+          country: 'India'
+        },
+        trackingEvents: [{ status: 'in_transit', location: 'Warehouse', description: 'Package left facility' }]
       });
     }
 

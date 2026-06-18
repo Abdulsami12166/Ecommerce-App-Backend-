@@ -1,11 +1,13 @@
 const Shipment = require('../../models/Shipment');
 const Order = require('../../models/Order');
+const User = require('../../models/User');
 const {
   sendSuccess,
   sendError,
   sendServerError,
 } = require('../../utils/feedback');
 const { auditAction, auditError } = require('../../utils/workflow');
+const { sendOrderStatusNotification } = require('../../shared/services/pushNotificationService');
 
 /**
  * Get all shipments
@@ -251,6 +253,14 @@ exports.updateTrackingStatus = async (req, res) => {
           emitToUser(req.app, order.user, socketEvents.DOMAIN.ORDER_UPDATED, payload);
         } catch (socketErr) {
           console.error('Socket emission failed in updateTrackingStatus:', socketErr.message);
+        }
+
+        // Send push notification to user
+        try {
+          const userDoc = await User.findById(order.user).select('fcmToken');
+          await sendOrderStatusNotification(userDoc, orderStatus, order._id);
+        } catch (pushErr) {
+          console.error('[Push] updateTrackingStatus notification failed:', pushErr.message);
         }
       }
     }

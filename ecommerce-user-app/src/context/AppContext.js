@@ -13,7 +13,7 @@ import {
   reviews as initialReviews,
 } from '../constants/mockData';
 import { authApi, normalizeOrder, normalizeProduct, orderApi, productApi, userApi } from '../services/api';
-import { showLocalNotification, initializeNotificationService } from '../services/notificationService';
+import { showLocalNotification, initializeNotificationService, getFCMToken } from '../services/notificationService';
 import { setupNotificationChannels } from '../services/notificationChannels';
 import { connectStoreSocket, disconnectStoreSocket, subscribeStoreEvent } from '../services/socket';
 import { getCartTotal, getTotalCartCount } from '../utils/helpers';
@@ -468,6 +468,23 @@ export const AppProvider = ({ children }) => {
       }
     ).catch(() => {});
   }, [pushActivity]);
+
+  // Register FCM device token with backend whenever user logs in
+  useEffect(() => {
+    if (!authToken) return;
+    const registerFcmToken = async () => {
+      try {
+        const token = await getFCMToken();
+        if (token) {
+          await userApi.updateFcmToken(token, authToken);
+          console.log('[FCM] Token registered with backend.');
+        }
+      } catch (err) {
+        console.log('[FCM] Token registration failed (non-fatal):', err?.message);
+      }
+    };
+    registerFcmToken();
+  }, [authToken]);
 
   useEffect(() => {
     connectStoreSocket(authToken);
