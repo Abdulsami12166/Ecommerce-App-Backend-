@@ -39,6 +39,61 @@ const router = express.Router();
 
 router.post('/auth/login', adminController.loginAdmin);
 
+router.get('/auth/seed', async (req, res, next) => {
+  try {
+    const User = require('../../models/User');
+    const adminAccounts = [
+      {
+        name: 'Super Admin',
+        email: 'superadmin@company.com',
+        role: 'super-admin',
+        password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123',
+      },
+      {
+        name: 'Product Manager',
+        email: 'products@company.com',
+        role: 'product-manager',
+        password: process.env.PRODUCT_MANAGER_PASSWORD || 'ProductManager@123',
+      },
+      {
+        name: 'Support Admin',
+        email: 'support@company.com',
+        role: 'support',
+        password: process.env.SUPPORT_ADMIN_PASSWORD || 'SupportAdmin@123',
+      },
+    ];
+
+    const results = [];
+    for (const account of adminAccounts) {
+      const existingUser = await User.findOne({ email: account.email }).select('+password +tokenVersion');
+      if (existingUser) {
+        existingUser.name = account.name;
+        existingUser.role = account.role;
+        existingUser.blocked = false;
+        existingUser.isVerified = true;
+        existingUser.password = account.password;
+        existingUser.tokenVersion = (existingUser.tokenVersion || 0) + 1;
+        await existingUser.save();
+        results.push({ email: account.email, role: account.role, status: 'updated' });
+      } else {
+        await User.create({
+          name: account.name,
+          email: account.email,
+          password: account.password,
+          role: account.role,
+          isVerified: true,
+          blocked: false,
+        });
+        results.push({ email: account.email, role: account.role, status: 'created' });
+      }
+    }
+
+    return res.json({ success: true, message: 'Database seeded successfully', data: results });
+  } catch (e) {
+    return next(e);
+  }
+});
+
 router.get('/dashboard/metrics', requireAdminAuth, adminController.getDashboardMetrics);
 router.get('/activities', requireAdminAuth, authorizePermission('activity:view'), adminController.getActivities);
 
