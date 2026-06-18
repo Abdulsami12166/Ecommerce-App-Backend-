@@ -40,6 +40,8 @@ const resolveSocketUser = async socket => {
   return null;
 };
 
+let ioInstance = null;
+
 const attachSocketServer = (httpServer, app) => {
   const allowedOrigins = [
     process.env.CLIENT_URL,
@@ -112,10 +114,11 @@ const attachSocketServer = (httpServer, app) => {
   });
 
   app.set('io', io);
+  ioInstance = io;
   return io;
 };
 
-const getIo = app => app.get('io');
+const getIo = app => app ? app.get('io') : ioInstance;
 
 const emitToAdmins = (app, event, payload) => {
   const io = getIo(app);
@@ -141,4 +144,5 @@ module.exports = {
   emitToAdmins,
   emitToUser,
   socketEvents,
+  getIo: () => ioInstance
 };

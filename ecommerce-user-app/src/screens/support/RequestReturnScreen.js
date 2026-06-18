@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -7,17 +7,17 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Alert,
   FlatList,
   Image,
 } from 'react-native';
 import CustomButton from '../../components/CustomButton';
 import ScreenHeader from '../../components/ScreenHeader';
+import AppModal, { useAppAlert } from '../../components/AppModal';
 import { useAppStore } from '../../context/AppContext';
 import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
 import { formatCurrency } from '../../utils/helpers';
-import { returnApi } from '../../services/api';
+import { returnApi, refundApi, replacementApi } from '../../services/api';
 import * as ImagePicker from 'react-native-image-picker';
 
 const RETURN_REASONS = [
@@ -47,8 +47,12 @@ const RequestReturnScreen = ({ navigation, route }) => {
   const prefillOrderId = route.params?.orderId || null;
   const prefillProductId = route.params?.productId || null;
 
+  const { alert, modalProps } = useAppAlert();
+
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [selectedItems, setSelectedItems] = useState(prefillProductId ? [prefillProductId] : []);
+  const [selectedItems, setSelectedItems] = useState(
+    prefillProductId ? [String(prefillProductId)] : [],
+  );
   const [selectedReason, setSelectedReason] = useState(null);
   const [selectedCondition, setSelectedCondition] = useState('good');
   const [comments, setComments] = useState('');
@@ -60,8 +64,8 @@ const RequestReturnScreen = ({ navigation, route }) => {
     zipCode: '',
   });
   const [loading, setLoading] = useState(false);
-  // If orderId provided, skip step 1 (start at step 2 with that order pre-selected)
   const [step, setStep] = useState(prefillOrderId ? 2 : 1);
+  const [requestedItemIds, setRequestedItemIds] = useState([]);
 
   const eligibleOrders = useMemo(
     () => orders.filter(order => 
@@ -72,36 +76,89 @@ const RequestReturnScreen = ({ navigation, route }) => {
     [orders]
   );
 
-  // Pre-select the order if orderId was passed in params
-  React.useEffect(() => {
+  useEffect(() => {
     if (prefillOrderId) {
-      const found = orders.find(o => o.id === prefillOrderId || o._id === prefillOrderId);
+      const found = orders.find(
+        o => String(o.id) === String(prefillOrderId) || String(o._id) === String(prefillOrderId),
+      );
       if (found) {
         setSelectedOrder(found);
-        if (prefillProductId) {
-          setSelectedItems([prefillProductId]);
-        }
+        if (prefillProductId) setSelectedItems([String(prefillProductId)]);
       }
     }
   }, [prefillOrderId, prefillProductId, orders]);
 
-  const handleSelectOrder = (order) => {
+  useEffect(() => {
+    if (!authToken || !selectedOrder) return;
+    const orderIdStr = String(selectedOrder.id || selectedOrder._id);
+    const fetchExisting = async () => {
+      try {
+        const [returnsRes, refundsRes, replacementsRes] = await Promise.all([
+          returnApi.getReturns(authToken).catch(() => ({ data: {} })),
+          refundApi.getRefunds(authToken).catch(() => ({ data: {} })),
+          replacementApi.getReplacements(authToken).catch(() => ({ data: {} })),
+        ]);
+        const returnsList = returnsRes?.data?.returns || returnsRes?.returns || [];
+        const refundsList = refundsRes?.data?.refunds || refundsRes?.refunds || [];
+        const replacementsList = replacementsRes?.data?.replacements || replacementsRes?.replacements || [];
+        const requested = new Set();
+        returnsList.forEach(ret => {
+          if (String(ret.order?._id || ret.order) === orderIdStr && ret.status !== 'rejected' && ret.status !== 'cancelled')
+            ret.returnItems?.forEach(item => requested.add(String(item.product?._id || item.product)));
+        });
+        refundsList.forEach(ref => {
+          if (String(ref.order?._id || ref.order) === orderIdStr && ref.status !== 'rejected' && ref.status !== 'failed')
+            (ref.items || []).forEach(id => requested.add(String(id?._id || id)));
+        });
+        replacementsList.forEach(rep => {
+          if (String(rep.order?._id || rep.order) === orderIdStr && rep.status !== 'rejected' && rep.status !== 'cancelled')
+            rep.replacementItems?.forEach(item => requested.add(String(item.originalProduct?._id || item.originalProduct)));
+        });
+        setRequestedItemIds(Array.from(requested));
+      } catch (err) {
+        console.warn('Existing requests fetch failed:', err);
+      }
+    };
+    fetchExisting();
+  }, [authToken, selectedOrder]);
+
+  useEffect(() => {
+    if (prefillProductId && requestedItemIds.includes(String(prefillProductId))) {
+      setSelectedItems([]);
+      alert({
+        type: 'warning',
+        title: 'Already Requested',
+        message: 'A return, refund or replacement has already been submitted for this item.',
+      });
+    }
+  }, [requestedItemIds, prefillProductId]);
+
+  const handleSelectOrder = order => {
     setSelectedOrder(order);
     setSelectedItems([]);
+    setRequestedItemIds([]);
     setStep(2);
   };
 
-  const handleToggleItem = (itemId) => {
-    setSelectedItems(current =>
-      current.includes(itemId)
-        ? current.filter(id => id !== itemId)
-        : [...current, itemId]
+  const handleToggleItem = itemId => {
+    const idStr = String(itemId);
+    setSelectedItems(prev =>
+      prev.includes(idStr) ? prev.filter(x => x !== idStr) : [...prev, idStr],
     );
   };
 
+  const validSelections = useMemo(
+    () => selectedItems.filter(id => !requestedItemIds.includes(id)),
+    [selectedItems, requestedItemIds],
+  );
+
   const handleProceedToReason = () => {
-    if (selectedItems.length === 0) {
-      Alert.alert('No Items Selected', 'Please select at least one item for return');
+    if (validSelections.length === 0) {
+      alert({
+        type: 'warning',
+        title: 'No Items Selected',
+        message: 'Please select at least one item to request a return.',
+      });
       return;
     }
     setStep(3);
@@ -109,7 +166,7 @@ const RequestReturnScreen = ({ navigation, route }) => {
 
   const handleProceedToImages = () => {
     if (!selectedReason) {
-      Alert.alert('Reason Required', 'Please select a reason for return');
+      alert({ type: 'warning', title: 'Reason Required', message: 'Please select a reason for return.' });
       return;
     }
     setStep(4);
@@ -126,13 +183,12 @@ const RequestReturnScreen = ({ navigation, route }) => {
         quality: 0.8,
         selectionLimit: 3,
       });
-
       if (result.assets) {
-        const newImages = result.assets.map(asset => asset.uri);
+        const newImages = result.assets.map(a => a.uri);
         setImages(prev => [...prev, ...newImages].slice(0, 5));
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
+      alert({ type: 'error', title: 'Error', message: 'Failed to pick image.' });
     }
   };
 
@@ -142,15 +198,14 @@ const RequestReturnScreen = ({ navigation, route }) => {
 
   const handleSubmitReturnRequest = async () => {
     if (!pickupAddress.street || !pickupAddress.city || !pickupAddress.zipCode) {
-      Alert.alert('Incomplete Address', 'Please fill in all required address fields');
+      alert({ type: 'warning', title: 'Incomplete Address', message: 'Please fill in all required address fields.' });
       return;
     }
-
     setLoading(true);
     try {
-      const response = await returnApi.createReturnRequest({
-        orderId: selectedOrder.id,
-        returnItems: selectedItems.map(itemId => ({
+      await returnApi.createReturnRequest({
+        orderId: selectedOrder.id || selectedOrder._id,
+        returnItems: validSelections.map(itemId => ({
           productId: itemId,
           quantity: 1,
           reason: selectedReason,
@@ -161,31 +216,24 @@ const RequestReturnScreen = ({ navigation, route }) => {
         pickupAddress,
         images,
       }, authToken);
-
-      Alert.alert(
-        'Return Request Submitted',
-        'Your return request has been submitted. Our team will review it within 24-48 hours and send you pickup instructions.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      alert({
+        type: 'success',
+        title: 'Return Request Submitted',
+        message: 'Your return request has been submitted. Our team will review it within 24–48 hours and send you pickup instructions.',
+        buttons: [{ text: 'OK', onPress: () => navigation.goBack() }],
+      });
     } catch (error) {
-      Alert.alert('Error', error?.message || 'Failed to submit return request');
+      alert({ type: 'error', title: 'Submission Failed', message: error?.message || 'Failed to submit return request.' });
     } finally {
       setLoading(false);
     }
   };
 
-  const returnReason = RETURN_REASONS.find(r => r.id === selectedReason);
-  const selectedItemsData = selectedOrder?.cartItems?.filter(item =>
-    selectedItems.includes(item.id || item.productId)
-  ) || [];
+
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppModal {...modalProps} />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -231,12 +279,12 @@ const RequestReturnScreen = ({ navigation, route }) => {
               <FlatList
                 scrollEnabled={false}
                 data={eligibleOrders}
-                keyExtractor={item => item.id}
+                keyExtractor={item => item.id || item._id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[
                       styles.orderCard,
-                      selectedOrder?.id === item.id && styles.orderCardSelected,
+                      (selectedOrder?.id === item.id || selectedOrder?._id === item._id) && styles.orderCardSelected,
                     ]}
                     onPress={() => handleSelectOrder(item)}
                     disabled={loading}
@@ -276,28 +324,37 @@ const RequestReturnScreen = ({ navigation, route }) => {
             <FlatList
               scrollEnabled={false}
               data={selectedOrder.cartItems || []}
-              keyExtractor={item => item.id || item.productId}
+              keyExtractor={item => String(item.id || item.productId)}
               renderItem={({ item }) => {
-                const isSelected = selectedItems.includes(item.id || item.productId);
+                const itemId = String(item.id || item.productId);
+                const isAlreadyRequested = requestedItemIds.includes(itemId);
+                const isSelected = selectedItems.includes(itemId);
                 return (
                   <TouchableOpacity
                     style={[
                       styles.itemCard,
                       isSelected && styles.itemCardSelected,
+                      isAlreadyRequested && styles.itemCardDisabled,
                     ]}
-                    onPress={() => handleToggleItem(item.id || item.productId)}
-                    disabled={loading}
+                    onPress={() => !isAlreadyRequested && handleToggleItem(itemId)}
+                    disabled={loading || isAlreadyRequested}
                   >
-                    <View style={styles.itemCheckbox}>
-                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                    <View style={[styles.itemCheckbox, isAlreadyRequested && styles.checkboxDisabled]}>
+                      {isSelected && !isAlreadyRequested && <Text style={styles.checkmark}>✓</Text>}
+                      {isAlreadyRequested && <Text style={styles.disabledCheck}>✕</Text>}
                     </View>
                     <View style={styles.itemDetails}>
-                      <Text style={styles.itemName}>{item.name || item.title}</Text>
+                      <Text style={[styles.itemName, isAlreadyRequested && styles.textDisabled]}>
+                        {item.name || item.title || 'Product'}
+                      </Text>
                       <Text style={styles.itemMeta}>
                         Qty: {item.quantity} × {formatCurrency(item.price)}
                       </Text>
+                      {isAlreadyRequested && (
+                        <Text style={styles.alreadyRequestedLabel}>Already requested</Text>
+                      )}
                     </View>
-                    <Text style={styles.itemPrice}>
+                    <Text style={[styles.itemPrice, isAlreadyRequested && styles.textDisabled]}>
                       {formatCurrency(item.price * item.quantity)}
                     </Text>
                   </TouchableOpacity>
@@ -308,7 +365,7 @@ const RequestReturnScreen = ({ navigation, route }) => {
             <CustomButton
               title="Continue"
               onPress={handleProceedToReason}
-              disabled={loading || selectedItems.length === 0}
+              disabled={loading || validSelections.length === 0}
             />
           </View>
         )}
@@ -809,6 +866,29 @@ const createStyles = colors =>
       fontSize: 14,
       color: colors.textMuted,
       textAlign: 'center',
+    },
+    itemCardDisabled: {
+      backgroundColor: colors.surfaceSecondary,
+      borderColor: colors.border,
+      opacity: 0.6,
+    },
+    checkboxDisabled: {
+      backgroundColor: colors.border,
+      borderColor: colors.border,
+    },
+    disabledCheck: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textMuted,
+    },
+    textDisabled: {
+      color: colors.textMuted,
+    },
+    alreadyRequestedLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.danger,
+      marginTop: spacing.xs,
     },
   });
 

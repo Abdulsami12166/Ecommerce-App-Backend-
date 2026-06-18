@@ -34,6 +34,16 @@ const returnRequestSchema = new mongoose.Schema(
     images: [{ type: String }],
     adminNotes: { type: String, trim: true },
     rejectionReason: { type: String, trim: true },
+    approvalDate: { type: Date },
+    rejectionDate: { type: Date },
+    completionDate: { type: Date },
+    timeline: [
+      {
+        event: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+        updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      }
+    ],
   },
   { timestamps: true },
 );

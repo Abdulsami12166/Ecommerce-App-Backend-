@@ -107,6 +107,14 @@ const createOrderForUser = async (userId, payload, app) => {
 
   const order = await ordersRepository.createOrder(createOrderPayload(currentUser, payload));
 
+  // Auto-generate invoice for the new order
+  try {
+    const { generateInvoiceForOrder } = require('../../shared/services/invoiceService');
+    await generateInvoiceForOrder(order._id);
+  } catch (invErr) {
+    console.error('[Invoice] Auto-generation failed on order creation:', invErr.message);
+  }
+
   await authRepository.createActivity({
     user: currentUser._id,
     action: 'order',

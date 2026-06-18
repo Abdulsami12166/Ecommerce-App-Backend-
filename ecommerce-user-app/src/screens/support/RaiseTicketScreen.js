@@ -7,10 +7,10 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Alert,
 } from 'react-native';
 import CustomButton from '../../components/CustomButton';
 import ScreenHeader from '../../components/ScreenHeader';
+import AppModal, { useAppAlert } from '../../components/AppModal';
 import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
 import { ticketApi } from '../../services/api';
@@ -31,6 +31,7 @@ const RaiseTicketScreen = ({ navigation, route }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { authToken } = useAppStore();
+  const { alert, modalProps } = useAppAlert();
 
   // Support pre-filling from product/order context
   const prefillProductId = route.params?.productId || null;
@@ -49,12 +50,20 @@ const RaiseTicketScreen = ({ navigation, route }) => {
 
   const handleSubmit = async () => {
     if (!selectedCategory || !subject.trim() || !description.trim() || !email.trim()) {
-      Alert.alert('Incomplete Form', 'Please fill in all required fields');
+      alert({
+        type: 'warning',
+        title: 'Incomplete Form',
+        message: 'Please fill in all required fields',
+      });
       return;
     }
 
     if (description.trim().length < 10) {
-      Alert.alert('Description Too Short', 'Please provide at least 10 characters describing your issue');
+      alert({
+        type: 'warning',
+        title: 'Description Too Short',
+        message: 'Please provide at least 10 characters describing your issue',
+      });
       return;
     }
 
@@ -70,13 +79,18 @@ const RaiseTicketScreen = ({ navigation, route }) => {
         ...(prefillOrderId && { orderId: prefillOrderId, relatedOrder: prefillOrderId }),
       }, authToken);
 
-      Alert.alert(
-        'Ticket Created',
-        'Your support ticket has been created successfully. We will get back to you soon.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
-      );
+      alert({
+        type: 'success',
+        title: 'Ticket Created',
+        message: 'Your support ticket has been created successfully. We will get back to you soon.',
+        buttons: [{ text: 'OK', onPress: () => navigation.goBack() }],
+      });
     } catch (error) {
-      Alert.alert('Error', error?.message || 'Failed to create ticket. Please try again.');
+      alert({
+        type: 'error',
+        title: 'Error',
+        message: error?.message || 'Failed to create ticket. Please try again.',
+      });
     } finally {
       setLoading(false);
     }
@@ -86,6 +100,7 @@ const RaiseTicketScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppModal {...modalProps} />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}

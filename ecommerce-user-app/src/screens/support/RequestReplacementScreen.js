@@ -7,17 +7,17 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Alert,
   FlatList,
   Image,
 } from 'react-native';
 import CustomButton from '../../components/CustomButton';
 import ScreenHeader from '../../components/ScreenHeader';
+import AppModal, { useAppAlert } from '../../components/AppModal';
 import { useAppStore } from '../../context/AppContext';
 import { useThemeColors } from '../../theme/colors';
 import spacing, { radius } from '../../theme/spacing';
 import { formatCurrency } from '../../utils/helpers';
-import { replacementApi } from '../../services/api';
+import { replacementApi, returnApi, refundApi } from '../../services/api';
 import * as ImagePicker from 'react-native-image-picker';
 
 const REPLACEMENT_REASONS = [
@@ -33,13 +33,14 @@ const RequestReplacementScreen = ({ navigation, route }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { orders, authToken } = useAppStore();
+  const { alert, modalProps } = useAppAlert();
 
   // Support pre-selecting from order/product context
   const prefillOrderId = route.params?.orderId || null;
   const prefillProductId = route.params?.productId || null;
 
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [selectedItems, setSelectedItems] = useState(prefillProductId ? [prefillProductId] : []);
+  const [selectedItems, setSelectedItems] = useState(prefillProductId ? [String(prefillProductId)] : []);
   const [replacementProducts, setReplacementProducts] = useState({});
   const [selectedReason, setSelectedReason] = useState(null);
   const [comments, setComments] = useState('');
@@ -51,7 +52,8 @@ const RequestReplacementScreen = ({ navigation, route }) => {
     zipCode: '',
   });
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(prefillOrderId ? 2 : 1); // 1: Select Order, 2: Select Items, 3: Select Replacement Products, 4: Select Reason, 5: Upload Images, 6: Pickup Address
+  const [step, setStep] = useState(prefillOrderId ? 2 : 1); 
+  const [requestedItemIds, setRequestedItemIds] = useState([]);
 
   // Pre-select the order if orderId was passed in params
   useEffect(() => {
@@ -60,11 +62,77 @@ const RequestReplacementScreen = ({ navigation, route }) => {
       if (found) {
         setSelectedOrder(found);
         if (prefillProductId) {
-          setSelectedItems([prefillProductId]);
+          setSelectedItems([String(prefillProductId)]);
         }
       }
     }
   }, [prefillOrderId, prefillProductId, orders]);
+
+  // Load existing requests for this order
+  // ponytail: unified returns/refunds/replacements fetching and coercion to String
+  useEffect(() => {
+    if (!authToken || !selectedOrder) return;
+    const fetchExistingRequests = async () => {
+      try {
+        const orderIdStr = String(selectedOrder.id || selectedOrder._id);
+        const [returnsRes, refundsRes, replacementsRes] = await Promise.all([
+          returnApi.getReturns(authToken).catch(() => ({ data: {} })),
+          refundApi.getRefunds(authToken).catch(() => ({ data: {} })),
+          replacementApi.getReplacements(authToken).catch(() => ({ data: {} })),
+        ]);
+
+        const returnsList = returnsRes.data?.returns || returnsRes.returns || [];
+        const refundsList = refundsRes.data?.refunds || refundsRes.refunds || [];
+        const replacementsList = replacementsRes.data?.replacements || replacementsRes.replacements || [];
+
+        const requested = new Set();
+
+        returnsList.forEach(ret => {
+          const retOrderId = String(ret.order?._id || ret.order);
+          if (retOrderId === orderIdStr && ret.status !== 'rejected' && ret.status !== 'cancelled') {
+            ret.returnItems?.forEach(item => {
+              requested.add(String(item.product?._id || item.product));
+            });
+          }
+        });
+
+        refundsList.forEach(ref => {
+          const refOrderId = String(ref.order?._id || ref.order);
+          if (refOrderId === orderIdStr && ref.status !== 'rejected' && ref.status !== 'failed') {
+            ref.items?.forEach(itemId => {
+              requested.add(String(itemId?._id || itemId));
+            });
+          }
+        });
+
+        replacementsList.forEach(rep => {
+          const repOrderId = String(rep.order?._id || rep.order);
+          if (repOrderId === orderIdStr && rep.status !== 'rejected' && rep.status !== 'cancelled') {
+            rep.replacementItems?.forEach(item => {
+              requested.add(String(item.originalProduct?._id || item.originalProduct));
+            });
+          }
+        });
+
+        setRequestedItemIds(Array.from(requested));
+      } catch (err) {
+        console.warn('Failed to fetch existing requests:', err);
+      }
+    };
+    fetchExistingRequests();
+  }, [authToken, selectedOrder]);
+
+  // Handle prefilled item already requested
+  useEffect(() => {
+    if (prefillProductId && requestedItemIds.includes(String(prefillProductId))) {
+      setSelectedItems([]);
+      alert({
+        type: 'warning',
+        title: 'Already Requested',
+        message: 'A return, refund, or replacement has already been requested for this item.'
+      });
+    }
+  }, [requestedItemIds, prefillProductId]);
 
   const eligibleOrders = useMemo(
     () => orders.filter(order => 
@@ -78,21 +146,32 @@ const RequestReplacementScreen = ({ navigation, route }) => {
   const handleSelectOrder = (order) => {
     setSelectedOrder(order);
     setSelectedItems([]);
+    setRequestedItemIds([]);
     setReplacementProducts({});
     setStep(2);
   };
 
   const handleToggleItem = (itemId) => {
+    const idStr = String(itemId);
     setSelectedItems(current =>
-      current.includes(itemId)
-        ? current.filter(id => id !== itemId)
-        : [...current, itemId]
+      current.includes(idStr)
+        ? current.filter(id => id !== idStr)
+        : [...current, idStr]
     );
   };
 
+  const validSelections = useMemo(
+    () => selectedItems.filter(id => !requestedItemIds.includes(String(id))),
+    [selectedItems, requestedItemIds]
+  );
+
   const handleProceedToProducts = () => {
-    if (selectedItems.length === 0) {
-      Alert.alert('No Items Selected', 'Please select at least one item for replacement');
+    if (validSelections.length === 0) {
+      alert({
+        type: 'warning',
+        title: 'No Items Selected',
+        message: 'Please select at least one item for replacement',
+      });
       return;
     }
     setStep(3);
@@ -106,9 +185,13 @@ const RequestReplacementScreen = ({ navigation, route }) => {
   };
 
   const handleProceedToReason = () => {
-    const allSelected = selectedItems.every(itemId => replacementProducts[itemId]);
+    const allSelected = validSelections.every(itemId => replacementProducts[itemId]);
     if (!allSelected) {
-      Alert.alert('Incomplete Selection', 'Please select a replacement product for each item');
+      alert({
+        type: 'warning',
+        title: 'Incomplete Selection',
+        message: 'Please select a replacement product for each item',
+      });
       return;
     }
     setStep(4);
@@ -116,7 +199,11 @@ const RequestReplacementScreen = ({ navigation, route }) => {
 
   const handleProceedToImages = () => {
     if (!selectedReason) {
-      Alert.alert('Reason Required', 'Please select a reason for replacement');
+      alert({
+        type: 'warning',
+        title: 'Reason Required',
+        message: 'Please select a reason for replacement',
+      });
       return;
     }
     setStep(5);
@@ -139,7 +226,11 @@ const RequestReplacementScreen = ({ navigation, route }) => {
         setImages(prev => [...prev, ...newImages].slice(0, 5));
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
+      alert({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to pick image',
+      });
     }
   };
 
@@ -149,22 +240,32 @@ const RequestReplacementScreen = ({ navigation, route }) => {
 
   const handleSubmitReplacementRequest = async () => {
     if (!pickupAddress.street || !pickupAddress.city || !pickupAddress.zipCode) {
-      Alert.alert('Incomplete Address', 'Please fill in all required address fields');
+      alert({
+        type: 'warning',
+        title: 'Incomplete Address',
+        message: 'Please fill in all required address fields',
+      });
       return;
     }
 
     setLoading(true);
     try {
-      const replacementItems = selectedItems.map(itemId => ({
-        originalProduct: itemId,
-        product: replacementProducts[itemId],
-        quantity: 1,
-        reason: selectedReason,
-        condition: 'Good',
-      }));
+      const replacementItems = validSelections.map(itemId => {
+        let replacementProd = replacementProducts[itemId];
+        if (replacementProd === 'different') {
+          replacementProd = replacementProducts[`${itemId}_custom`] || itemId;
+        }
+        return {
+          originalProduct: itemId,
+          product: replacementProd,
+          quantity: 1,
+          reason: selectedReason,
+          condition: 'Good',
+        };
+      });
 
       const response = await replacementApi.createReplacementRequest({
-        orderId: selectedOrder.id,
+        orderId: selectedOrder.id || selectedOrder._id,
         replacementItems,
         reason: selectedReason,
         comments,
@@ -172,29 +273,37 @@ const RequestReplacementScreen = ({ navigation, route }) => {
         images,
       }, authToken);
 
-      Alert.alert(
-        'Replacement Request Submitted',
-        'Your replacement request has been submitted. Our team will review it within 24-48 hours and send you pickup instructions for the original item.',
-        [
+      alert({
+        type: 'success',
+        title: 'Replacement Request Submitted',
+        message: 'Your replacement request has been submitted. Our team will review it within 24-48 hours and send you pickup instructions for the original item.',
+        buttons: [
           {
             text: 'OK',
             onPress: () => navigation.goBack(),
           },
         ]
-      );
+      });
     } catch (error) {
-      Alert.alert('Error', error?.message || 'Failed to submit replacement request');
+      alert({
+        type: 'error',
+        title: 'Error',
+        message: error?.message || 'Failed to submit replacement request',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedItemsData = selectedOrder?.cartItems?.filter(item =>
-    selectedItems.includes(item.id || item.productId)
-  ) || [];
+  const selectedItemsData = useMemo(() => {
+    return selectedOrder?.cartItems?.filter(item =>
+      validSelections.includes(String(item.id || item.productId))
+    ) || [];
+  }, [selectedOrder, validSelections]);
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppModal {...modalProps} />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -240,12 +349,12 @@ const RequestReplacementScreen = ({ navigation, route }) => {
               <FlatList
                 scrollEnabled={false}
                 data={eligibleOrders}
-                keyExtractor={item => item.id}
+                keyExtractor={item => item.id || item._id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[
                       styles.orderCard,
-                      selectedOrder?.id === item.id && styles.orderCardSelected,
+                      (selectedOrder?.id === item.id || selectedOrder?._id === item._id) && styles.orderCardSelected,
                     ]}
                     onPress={() => handleSelectOrder(item)}
                     disabled={loading}
@@ -285,28 +394,37 @@ const RequestReplacementScreen = ({ navigation, route }) => {
             <FlatList
               scrollEnabled={false}
               data={selectedOrder.cartItems || []}
-              keyExtractor={item => item.id || item.productId}
+              keyExtractor={item => String(item.id || item.productId)}
               renderItem={({ item }) => {
-                const isSelected = selectedItems.includes(item.id || item.productId);
+                const itemId = String(item.id || item.productId);
+                const isAlreadyRequested = requestedItemIds.includes(itemId);
+                const isSelected = selectedItems.includes(itemId);
                 return (
                   <TouchableOpacity
                     style={[
                       styles.itemCard,
                       isSelected && styles.itemCardSelected,
+                      isAlreadyRequested && styles.itemCardDisabled,
                     ]}
-                    onPress={() => handleToggleItem(item.id || item.productId)}
-                    disabled={loading}
+                    onPress={() => !isAlreadyRequested && handleToggleItem(itemId)}
+                    disabled={loading || isAlreadyRequested}
                   >
-                    <View style={styles.itemCheckbox}>
-                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                    <View style={[styles.itemCheckbox, isAlreadyRequested && styles.checkboxDisabled]}>
+                      {isSelected && !isAlreadyRequested && <Text style={styles.checkmark}>✓</Text>}
+                      {isAlreadyRequested && <Text style={styles.disabledCheck}>✕</Text>}
                     </View>
                     <View style={styles.itemDetails}>
-                      <Text style={styles.itemName}>{item.name || item.title}</Text>
+                      <Text style={[styles.itemName, isAlreadyRequested && styles.textDisabled]}>
+                        {item.name || item.title}
+                      </Text>
                       <Text style={styles.itemMeta}>
                         Qty: {item.quantity} × {formatCurrency(item.price)}
                       </Text>
+                      {isAlreadyRequested && (
+                        <Text style={styles.alreadyRequestedLabel}>Already requested</Text>
+                      )}
                     </View>
-                    <Text style={styles.itemPrice}>
+                    <Text style={[styles.itemPrice, isAlreadyRequested && styles.textDisabled]}>
                       {formatCurrency(item.price * item.quantity)}
                     </Text>
                   </TouchableOpacity>
@@ -317,7 +435,7 @@ const RequestReplacementScreen = ({ navigation, route }) => {
             <CustomButton
               title="Continue"
               onPress={handleProceedToProducts}
-              disabled={loading || selectedItems.length === 0}
+              disabled={loading || validSelections.length === 0}
             />
           </View>
         )}
@@ -868,6 +986,29 @@ const createStyles = colors =>
       fontSize: 14,
       color: colors.textMuted,
       textAlign: 'center',
+    },
+    itemCardDisabled: {
+      backgroundColor: colors.surfaceSecondary,
+      borderColor: colors.border,
+      opacity: 0.6,
+    },
+    checkboxDisabled: {
+      backgroundColor: colors.border,
+      borderColor: colors.border,
+    },
+    disabledCheck: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textMuted,
+    },
+    textDisabled: {
+      color: colors.textMuted,
+    },
+    alreadyRequestedLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.danger,
+      marginTop: spacing.xs,
     },
   });
 

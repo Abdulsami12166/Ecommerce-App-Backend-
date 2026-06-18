@@ -9,6 +9,8 @@ const DEFAULT_SETTINGS = [
   { key: 'store.phone', label: 'Support Phone', value: '+91-9999999999', type: 'string', category: 'general', section: 'contact', description: 'Customer support phone number' },
   { key: 'store.currency', label: 'Currency', value: 'INR', type: 'string', category: 'general', section: 'locale', description: 'Store currency code' },
   { key: 'store.language', label: 'Language', value: 'en', type: 'string', category: 'general', section: 'locale', description: 'Default store language' },
+  { key: 'store.logo', label: 'Store Logo', value: 'https://example.com/logo.png', type: 'string', category: 'general', section: 'brand', description: 'URL of the store logo' },
+  { key: 'store.timezone', label: 'Timezone', value: 'UTC', type: 'string', category: 'general', section: 'locale', description: 'Store timezone' },
   // Shipping
   { key: 'shipping.free_threshold', label: 'Free Shipping Threshold (₹)', value: 500, type: 'number', category: 'shipping', section: 'fees', description: 'Orders above this amount get free shipping' },
   { key: 'shipping.default_fee', label: 'Default Shipping Fee (₹)', value: 49, type: 'number', category: 'shipping', section: 'fees', description: 'Flat rate shipping fee' },
@@ -18,6 +20,7 @@ const DEFAULT_SETTINGS = [
   { key: 'payment.cod_enabled', label: 'Cash On Delivery', value: true, type: 'boolean', category: 'payment', section: 'methods', description: 'Enable COD payment option' },
   { key: 'payment.razorpay_enabled', label: 'Razorpay Payments', value: true, type: 'boolean', category: 'payment', section: 'methods', description: 'Enable Razorpay payment gateway' },
   { key: 'payment.min_order_amount', label: 'Minimum Order Amount (₹)', value: 100, type: 'number', category: 'payment', section: 'limits', description: 'Minimum cart value to place an order' },
+  { key: 'payment.refund_policy', label: 'Refund Policy', value: '30-day return policy', type: 'string', category: 'payment', section: 'policies', description: 'Store refund policy terms' },
   // Tax
   { key: 'tax.gst_enabled', label: 'GST Enabled', value: true, type: 'boolean', category: 'tax', section: 'gst', description: 'Apply GST to orders' },
   { key: 'tax.gst_rate', label: 'Default GST Rate (%)', value: 18, type: 'number', category: 'tax', section: 'gst', description: 'GST percentage applied to taxable products' },
@@ -36,9 +39,12 @@ const DEFAULT_SETTINGS = [
 ];
 
 const seedDefaultSettings = async () => {
-  const count = await StoreSetting.countDocuments();
-  if (count > 0) return;
-  await StoreSetting.insertMany(DEFAULT_SETTINGS.map(s => ({ ...s, isEditable: true })));
+  for (const s of DEFAULT_SETTINGS) {
+    const existing = await StoreSetting.findOne({ key: s.key });
+    if (!existing) {
+      await StoreSetting.create({ ...s, isEditable: true });
+    }
+  }
 };
 
 /**

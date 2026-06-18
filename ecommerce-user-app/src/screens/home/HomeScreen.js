@@ -27,7 +27,7 @@ const HomeScreen = ({ navigation }) => {
     catalogProducts,
     orders,
   } = useAppStore()
-  const featuredProducts = useMemo(() => catalogProducts.slice(0, 3), [catalogProducts])
+  const featuredProducts = useMemo(() => catalogProducts.slice(0, 8), [catalogProducts])
   const topCategories = useMemo(() => {
     const uniqueCategories = []
 
@@ -178,20 +178,23 @@ const HomeScreen = ({ navigation }) => {
 
         {/* keep few products on home only */}
         <FlatList
+          key="grid-products"
           data={featuredProducts}
-          horizontal
+          numColumns={2}
+          scrollEnabled={false}
           keyExtractor={item => item.id}
+          columnWrapperStyle={styles.columnWrapper}
           renderItem={({ item }) => (
             <ProductCard
               product={item}
+              compact
               onPress={() => navigation.navigate('ProductDetails', { productId: item.id })}
             />
           )}
-          initialNumToRender={2}
-          maxToRenderPerBatch={3}
+          initialNumToRender={4}
+          maxToRenderPerBatch={8}
           windowSize={3}
           removeClippedSubviews
-          showsHorizontalScrollIndicator={false}
           ListEmptyComponent={<Text style={styles.emptyText}>Products are loading from the store.</Text>}
         />
 
@@ -234,6 +237,10 @@ const HomeScreen = ({ navigation }) => {
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
   topRow: {
     flexDirection: 'row',

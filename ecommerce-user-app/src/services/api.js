@@ -38,6 +38,8 @@ export const normalizeOrder = order => {
     statusGroup = 'cancelled';
   }
 
+  const rawItems = Array.isArray(order.items) ? order.items : [];
+
   return {
     ...order,
     id: order._id || order.id,
@@ -46,10 +48,33 @@ export const normalizeOrder = order => {
     statusGroup,
     total: order.totalAmount || order.total || 0,
     date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : order.date,
-    items: Array.isArray(order.items)
-      ? order.items.reduce((sum, item) => sum + (item.quantity || item.qty || 0), 0)
-      : order.items,
-    hero: order.items?.[0]?.image || order.hero || '',
+    items: rawItems.reduce((sum, item) => sum + (item.quantity || item.qty || 0), 0),
+    cartItems: rawItems.map(item => {
+      // item.product may be a populated object OR a plain string/ObjectId
+      const productRef = item.product;
+      const rawProductId =
+        (productRef && typeof productRef === 'object'
+          ? String(productRef._id || productRef.id || productRef)
+          : String(productRef || '')) ||
+        String(item.productId || item.id || item._id || Math.random());
+
+      const productName =
+        (productRef && typeof productRef === 'object'
+          ? productRef.title || productRef.name
+          : null) ||
+        item.title || item.name || '';
+
+      return {
+        ...item,
+        id: rawProductId,
+        productId: rawProductId,
+        name: productName,
+        quantity: item.quantity || item.qty || 1,
+        price: item.price || 0,
+        image: item.image || (productRef && typeof productRef === 'object' ? productRef.images?.[0] : '') || '',
+      };
+    }),
+    hero: rawItems[0]?.image || order.hero || '',
     eta:
       rawStatus === 'delivered'
         ? 'Delivered successfully'
@@ -57,8 +82,8 @@ export const normalizeOrder = order => {
           ? 'Order cancelled'
           : 'Processing your delivery',
     trackingTitle:
-      order.items?.[0]?.title
-        ? `Track your ${order.items[0].title}`
+      rawItems[0]?.title
+        ? `Track your ${rawItems[0].title}`
         : order.trackingTitle || 'Track your order',
     statusHistory: Array.isArray(order.statusHistory) ? order.statusHistory : [],
   };
