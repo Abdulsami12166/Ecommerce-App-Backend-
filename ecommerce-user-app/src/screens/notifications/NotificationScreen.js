@@ -131,9 +131,9 @@ const NotificationScreen = ({ navigation }) => {
 
       {items.map(item => (
         <View key={`${label}-${item.id}`} style={styles.card}>
-          <View style={styles.iconWrap}>
-            <Text style={styles.iconTxt}>{markedRead ? '*' : 'o'}</Text>
-          </View>
+            <View style={styles.iconWrap}>
+              <Text style={styles.iconTxt}>{markedRead ? '✓' : '🔵'}</Text>
+            </View>
 
           <View style={styles.body}>
             <View style={styles.cardTop}>
@@ -151,7 +151,7 @@ const NotificationScreen = ({ navigation }) => {
    <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScreenHeader
-          title="Notification"
+          title="Notifications"
           onBack={() => navigation.goBack()}
           rightLabel={notificationEnabled ? 'ON' : 'OFF'}
           onRightPress={handleEnableNotifications}

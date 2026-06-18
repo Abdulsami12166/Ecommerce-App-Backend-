@@ -9,10 +9,6 @@ import spacing from '../../theme/spacing';
 const WishlistScreen = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  // const temp = setInterval(() => {
-    // console.log('hello')
-  // }, 1000);
-  //const [temp , settemp] = useState(0)
   const { wishlistIds, catalogProducts } = useAppStore();
   const wishlistProducts = catalogProducts.filter(product => wishlistIds.includes(product.id));
 

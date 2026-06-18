@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import {
   SafeAreaView,
   ScrollView,
@@ -12,26 +12,25 @@ import ProductCard from '../../components/ProductCard'
 import ScreenHeader from '../../components/ScreenHeader'
 import { useAppStore } from '../../context/AppContext'
 import { filters } from '../../constants/mockData'
-import colors from '../../theme/colors'
+import { useThemeColors } from '../../theme/colors'
 import spacing from '../../theme/spacing'
 
 const SearchScreen = ({ navigation }) => {
+  const colors = useThemeColors()
+  const styles = createStyles(colors)
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState('Trending')
   const { catalogProducts } = useAppStore()
 
-  const filteredProducts = useMemo(() => {
-    return catalogProducts.filter(product => {
-      const searchTarget = `${product.name} ${product.brand} ${product.category}`.toLowerCase()
-      return searchTarget.includes(query.toLowerCase())
-    })
-  }, [catalogProducts, query])
+  const filteredProducts = catalogProducts.filter(product => {
+    const searchTarget = `${product.name} ${product.brand} ${product.category}`.toLowerCase()
+    return searchTarget.includes(query.toLowerCase())
+  })
 
   return (
    <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScreenHeader title="Search" onBack={() => navigation.goBack()} />
-        {/* srch input */}
         <TextInput
           placeholder="Search by product, brand, category"
           placeholderTextColor={colors.textMuted}
@@ -40,7 +39,7 @@ const SearchScreen = ({ navigation }) => {
           style={styles.searchInput}
         />
 
-        {/* filter chips for quick feel */}
+        {/* Category filter chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {filters.map(filter => {
             const active = filter.title === activeFilter
@@ -73,7 +72,7 @@ const SearchScreen = ({ navigation }) => {
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = colors => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   searchInput: {

@@ -62,7 +62,6 @@ const OrdersScreen = ({ navigation }) => {
             style={styles.card}
             onPress={() => navigation.navigate(selectedFilter === 'current' ? 'TrackOrder' : 'OrderDetails', { orderId: order.id })}
           >
-            {/* checking orderrr details */}
             <Image source={{ uri: order.hero }} style={styles.image} />
             <View style={styles.body}>
               <Text style={styles.code}>{order.code}</Text>
