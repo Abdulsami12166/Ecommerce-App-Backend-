@@ -567,6 +567,16 @@ export const AppProvider = ({ children }) => {
           data: { screen: 'Notifications' },
         }).catch(() => {});
       }),
+      subscribeStoreEvent('notification.inapp', payload => {
+        const title = payload?.title || 'System Alert';
+        const message = payload?.message || payload?.content || payload?.body || '';
+        pushActivity(message);
+        showLocalNotification({
+          title,
+          body: message,
+          data: { screen: 'Notifications', notificationId: payload?.id },
+        }).catch(() => {});
+      }),
 
       // ── Support: Tickets ─────────────────────────────────────────────
       subscribeStoreEvent('support.ticket.updated', payload => {
