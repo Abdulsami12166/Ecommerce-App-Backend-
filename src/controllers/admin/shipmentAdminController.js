@@ -1,11 +1,13 @@
 const Shipment = require('../../models/Shipment');
 const Order = require('../../models/Order');
+const User = require('../../models/User');
 const {
   sendSuccess,
   sendError,
   sendServerError,
 } = require('../../utils/feedback');
 const { auditAction, auditError } = require('../../utils/workflow');
+const { sendOrderStatusNotification } = require('../../shared/services/pushNotificationService');
 
 /**
  * Get all shipments
@@ -153,6 +155,8 @@ exports.createShipment = async (req, res) => {
       emitToAdmins(req.app, socketEvents.LEGACY.ORDER_STATUS_CHANGED, payload);
       emitToAdmins(req.app, socketEvents.DOMAIN.ORDER_UPDATED, payload);
       emitToUser(req.app, order.user, socketEvents.DOMAIN.ORDER_UPDATED, payload);
+      // Emit shipment-specific event for the admin Shipments section
+      emitToAdmins(req.app, socketEvents.DOMAIN.SHIPMENT_CREATED, { shipment: shipment.toObject() });
     } catch (socketErr) {
       // Log socket error but don't fail the request
       console.error('Socket emission failed in createShipment:', socketErr.message);
@@ -250,6 +254,14 @@ exports.updateTrackingStatus = async (req, res) => {
         } catch (socketErr) {
           console.error('Socket emission failed in updateTrackingStatus:', socketErr.message);
         }
+
+        // Send push notification to user
+        try {
+          const userDoc = await User.findById(order.user).select('fcmToken');
+          await sendOrderStatusNotification(userDoc, orderStatus, order._id);
+        } catch (pushErr) {
+          console.error('[Push] updateTrackingStatus notification failed:', pushErr.message);
+        }
       }
     }
 
@@ -258,6 +270,16 @@ exports.updateTrackingStatus = async (req, res) => {
     await auditAction(req, 'update_tracking', 'shipment', shipment._id, null, { status, location }, {
       resourcePath: `/api/admin/shipments/${shipmentId}/tracking`,
     });
+
+    // Emit SHIPMENT_UPDATED so admin Shipments panel refreshes in real-time
+    try {
+      const { emitToAdmins, socketEvents } = require('../../shared/events/eventBus');
+      emitToAdmins(req.app, socketEvents.DOMAIN.SHIPMENT_UPDATED, {
+        shipmentId,
+        status,
+        location,
+      });
+    } catch (_) { /* non-fatal */ }
 
     return sendSuccess(res, 200, 'Tracking updated successfully', { shipment });
   } catch (error) {

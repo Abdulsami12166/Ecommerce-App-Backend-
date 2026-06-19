@@ -4,6 +4,7 @@ const usersRoutes = require('../modules/users/users.routes');
 const ordersRoutes = require('../modules/orders/orders.routes');
 const adminRoutes = require('../modules/admin/admin.routes');
 const supportRoutes = require('../modules/support/support.routes');
+const storeSettingsRoutes = require('../routes/storeSettingsRoutes');
 const { logger } = require('../shared/utils/logger');
 
 const registerRoutes = app => {
@@ -28,10 +29,12 @@ const registerRoutes = app => {
   app.use('/api/v1/orders', ordersRoutes);
   app.use('/api/v1/support', supportRoutes);
   app.use('/api/v1/admin', adminRoutes);
+  app.use('/api/v1/store-settings', storeSettingsRoutes);
 
   // Backwards-compat: some clients may call without /api/v1 prefix
   app.use('/support', supportRoutes);
   app.use('/admin', adminRoutes);
+  app.use('/store-settings', storeSettingsRoutes);
 
 };
 

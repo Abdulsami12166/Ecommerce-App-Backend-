@@ -20,6 +20,8 @@ const socketEvents = {
     // Shipment real-time events
     SHIPMENT_CREATED: 'shipment.created',
     SHIPMENT_UPDATED: 'shipment.updated',
+    // Notification real-time events
+    NOTIFICATION_SENT: 'notification.sent',
     // Audit log events
     AUDIT_LOG_CREATED: 'audit.log.created',
     // Support events

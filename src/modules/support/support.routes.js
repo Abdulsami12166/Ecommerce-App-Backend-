@@ -33,5 +33,10 @@ router.get('/replacements/:replacementId', requireUserAuth, replacementsControll
 // Admin routes
 router.get('/admin/tickets', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllTickets);
 router.get('/admin/refunds', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllRefunds);
+router.get('/admin/returns', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAllReturns);
+router.get('/admin/returns/:returnId', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.getAdminReturnDetail);
+router.patch('/admin/returns/:returnId/status', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.updateAdminReturnStatus);
+router.post('/admin/returns/:returnId/approve', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.approveAdminReturn);
+router.post('/admin/returns/:returnId/reject', requireAdminAuth, requireAdminRole('admin', 'super-admin', 'support'), supportController.rejectAdminReturn);
 
 module.exports = router;

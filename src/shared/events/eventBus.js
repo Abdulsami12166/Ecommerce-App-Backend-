@@ -40,6 +40,8 @@ const resolveSocketUser = async socket => {
   return null;
 };
 
+let ioInstance = null;
+
 const attachSocketServer = (httpServer, app) => {
   const allowedOrigins = [
     process.env.CLIENT_URL,
@@ -112,27 +114,49 @@ const attachSocketServer = (httpServer, app) => {
   });
 
   app.set('io', io);
+  ioInstance = io;
   return io;
 };
 
-const getIo = app => app.get('io');
+const getIo = app => app ? app.get('io') : ioInstance;
 
 const emitToAdmins = (app, event, payload) => {
   const io = getIo(app);
-  if (!io) return;
-  io.to(socketEvents.ROOMS.ADMINS).emit(event, payload);
+  if (io) {
+    io.to(socketEvents.ROOMS.ADMINS).emit(event, payload);
+  }
+  try {
+    const { triggerEventNotifications } = require('../services/notificationTriggerService');
+    triggerEventNotifications(event, payload).catch(err => console.error(err));
+  } catch (err) {
+    console.error('Failed to trigger event notifications:', err);
+  }
 };
 
 const emitToAll = (app, event, payload) => {
   const io = getIo(app);
-  if (!io) return;
-  io.emit(event, payload);
+  if (io) {
+    io.emit(event, payload);
+  }
+  try {
+    const { triggerEventNotifications } = require('../services/notificationTriggerService');
+    triggerEventNotifications(event, payload).catch(err => console.error(err));
+  } catch (err) {
+    console.error('Failed to trigger event notifications:', err);
+  }
 };
 
 const emitToUser = (app, userId, event, payload) => {
   const io = getIo(app);
   if (!io || !userId) return;
   io.to(socketEvents.ROOMS.user(String(userId))).emit(event, payload);
+
+  try {
+    const { triggerEventNotifications } = require('../services/notificationTriggerService');
+    triggerEventNotifications(event, { ...payload, userId }).catch(err => console.error(err));
+  } catch (err) {
+    console.error('Failed to trigger event notifications:', err);
+  }
 };
 
 module.exports = {
@@ -141,4 +165,5 @@ module.exports = {
   emitToAdmins,
   emitToUser,
   socketEvents,
+  getIo: () => ioInstance
 };

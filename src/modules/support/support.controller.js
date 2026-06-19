@@ -119,6 +119,7 @@ const supportController = {
       const refundPayload = {
         user: userId,
         order: orderId,
+        items: itemIds,
         reason: normalizeRefundReason(reason),
         refundType: selectedItems.length === order.items.length ? 'full' : 'partial',
         refundAmount: productAmount,
@@ -456,6 +457,33 @@ const supportController = {
       emitToAdmins(req.app, socketEvents.DOMAIN.RETURN_UPDATED, payload);
       emitToUser(req.app, returnRequest.user, socketEvents.DOMAIN.RETURN_UPDATED, payload);
       return sendSuccessResponse(res, { returnRequest }, 'Return status updated successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  approveAdminReturn: async (req, res) => {
+    try {
+      const { notes } = req.body;
+      const returnRequest = await returnsRepository.updateReturnStatus(req.params.returnId, 'approved', notes, undefined);
+      const payload = { returnId: returnRequest._id, orderId: returnRequest.order, status: returnRequest.status };
+      emitToAdmins(req.app, socketEvents.DOMAIN.RETURN_UPDATED, payload);
+      emitToUser(req.app, returnRequest.user, socketEvents.DOMAIN.RETURN_UPDATED, payload);
+      return sendSuccessResponse(res, { returnRequest }, 'Return request approved successfully');
+    } catch (error) {
+      return sendErrorResponse(res, error.message, 500);
+    }
+  },
+
+  rejectAdminReturn: async (req, res) => {
+    try {
+      const { reason } = req.body;
+      if (!reason) return sendErrorResponse(res, 'Reason is required to reject return request', 400);
+      const returnRequest = await returnsRepository.updateReturnStatus(req.params.returnId, 'rejected', undefined, reason);
+      const payload = { returnId: returnRequest._id, orderId: returnRequest.order, status: returnRequest.status };
+      emitToAdmins(req.app, socketEvents.DOMAIN.RETURN_UPDATED, payload);
+      emitToUser(req.app, returnRequest.user, socketEvents.DOMAIN.RETURN_UPDATED, payload);
+      return sendSuccessResponse(res, { returnRequest }, 'Return request rejected successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
     }

@@ -37,9 +37,19 @@ const toggleWishlist = async (req, res, next) => {
   }
 };
 
+const updateFcmToken = async (req, res, next) => {
+  try {
+    const data = await usersService.updateFcmToken(req.userId, req.body.fcmToken);
+    return sendSuccess(res, 200, 'FCM token updated successfully', data);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   uploadProfileAvatar,
   toggleWishlist,
+  updateFcmToken,
 };
