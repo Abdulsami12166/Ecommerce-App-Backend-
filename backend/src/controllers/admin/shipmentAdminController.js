@@ -48,10 +48,11 @@ exports.getAllShipments = async (req, res) => {
     let query = {};
 
     if (status) {
-      if (status === 'shipped' || status === 'in_transit') {
+      const normalizedStatus = status.toLowerCase();
+      if (normalizedStatus === 'shipped' || normalizedStatus === 'in_transit') {
         query.status = { $in: ['shipped', 'in_transit'] };
       } else {
-        query.status = status;
+        query.status = { $regex: new RegExp(`^${status}$`, 'i') };
       }
     }
 
@@ -353,10 +354,11 @@ exports.getShipmentsByStatus = async (req, res) => {
     const { limit = 50 } = req.query;
 
     let query = {};
-    if (status === 'shipped' || status === 'in_transit') {
+    const normalizedStatus = status.toLowerCase();
+    if (normalizedStatus === 'shipped' || normalizedStatus === 'in_transit') {
       query.status = { $in: ['shipped', 'in_transit'] };
     } else {
-      query.status = status;
+      query.status = { $regex: new RegExp(`^${status}$`, 'i') };
     }
 
     const shipments = await Shipment.find(query)

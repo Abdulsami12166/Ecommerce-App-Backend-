@@ -17,7 +17,7 @@ const MANAGED_ADMIN_ROLES = ADMIN_ROLES.filter(role => role !== 'super-admin');
 
 const getAdminUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select('name email phone role avatar isVerified blocked lastLoginAt createdAt').sort({ createdAt: -1 });
+    const users = await User.find({ role: { $in: ADMIN_ROLES } }).select('name email phone role avatar isVerified blocked lastLoginAt createdAt').sort({ createdAt: -1 });
     return sendSuccess(res, 200, 'Admin users fetched successfully', { users });
   } catch (e) {
     next(e);
