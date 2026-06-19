@@ -613,7 +613,8 @@ exports.sendDirectNotification = asyncHandler(async (req, res) => {
     const user = await User.findById(userId);
     if (user) targets.push(user);
   } else if (role) {
-    targets = await User.find({ role });
+    const queryRole = role === 'customer' ? 'user' : role;
+    targets = await User.find({ role: queryRole });
   } else {
     targets = await User.find({});
   }
