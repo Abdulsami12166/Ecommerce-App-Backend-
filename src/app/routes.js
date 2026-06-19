@@ -31,6 +31,26 @@ const registerRoutes = app => {
   app.use('/api/v1/admin', adminRoutes);
   app.use('/api/v1/store-settings', storeSettingsRoutes);
 
+  // Cross-service internal socket bridge route
+  app.post('/api/v1/internal/emit-socket', (req, res) => {
+    try {
+      const { userId, event, payload } = req.body;
+      if (userId) {
+        const { emitToUser } = require('../shared/events/eventBus');
+        emitToUser(app, userId, event, payload);
+        logger.info(`[SocketBridge] Forwarded event "${event}" to user ${userId}`);
+      } else {
+        const { emitToAll } = require('../shared/events/eventBus');
+        emitToAll(app, event, payload);
+        logger.info(`[SocketBridge] Broadcasted event "${event}" to all users`);
+      }
+      res.json({ success: true, message: 'Event emitted' });
+    } catch (err) {
+      logger.error('[SocketBridge] Emission failed', { error: err.message });
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Backwards-compat: some clients may call without /api/v1 prefix
   app.use('/support', supportRoutes);
   app.use('/admin', adminRoutes);

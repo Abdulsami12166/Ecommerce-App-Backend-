@@ -93,6 +93,150 @@ router.get('/auth/seed', async (req, res, next) => {
       }
     }
 
+    // Seed regular customer user (Zix)
+    let zixUser = await User.findOne({ email: 'zix@company.com' });
+    if (!zixUser) {
+      zixUser = await User.create({
+        name: 'Zix',
+        email: 'zix@company.com',
+        password: 'Password@123',
+        role: 'user',
+        isVerified: true,
+        fcmToken: 'fcm_zix_mock_token'
+      });
+      results.push({ email: zixUser.email, role: zixUser.role, status: 'created' });
+    } else {
+      zixUser.fcmToken = 'fcm_zix_mock_token';
+      await zixUser.save();
+    }
+
+    // Seed mock product
+    const Product = require('../../models/Product');
+    let testProduct = await Product.findOne({});
+    if (!testProduct) {
+      testProduct = await Product.create({
+        title: 'Cool Sneakers',
+        name: 'Cool Sneakers',
+        description: 'Vibrant sneakers for running and lifestyle',
+        price: 2999,
+        images: ['https://images.unsplash.com/photo-1542291026-7eec264c27ff'],
+        category: 'shoes',
+        stock: 50,
+        sku: 'SNK-COOL-01'
+      });
+    }
+
+    // Seed mock order
+    const Order = require('../../models/Order');
+    let testOrder = await Order.findOne({ user: zixUser._id });
+    if (!testOrder) {
+      testOrder = await Order.create({
+        user: zixUser._id,
+        items: [
+          {
+            product: testProduct._id,
+            title: testProduct.title,
+            quantity: 1,
+            selectedSize: '10',
+            price: testProduct.price,
+            image: testProduct.images[0]
+          }
+        ],
+        subtotal: testProduct.price,
+        shippingFee: 49,
+        taxAmount: 539,
+        totalAmount: testProduct.price + 49 + 539,
+        orderStatus: 'shipped',
+        statusHistory: [
+          { status: 'pending', label: 'Pending', timestamp: new Date() },
+          { status: 'shipped', label: 'Shipped', timestamp: new Date() }
+        ],
+        paymentStatus: 'paid',
+        paymentMethod: 'card',
+        razorpayOrderId: 'order_zix_mock_123',
+        razorpayPaymentId: 'pay_zix_mock_123',
+        transactionStatus: 'paid',
+        transactionVerifiedAt: new Date()
+      });
+    }
+
+    // Seed mock shipment
+    const Shipment = require('../../models/Shipment');
+    let testShipment = await Shipment.findOne({ order: testOrder._id });
+    if (!testShipment) {
+      testShipment = await Shipment.create({
+        order: testOrder._id,
+        trackingNumber: 'TRK-ZIX-12345',
+        carrier: 'BlueDart',
+        estimatedDeliveryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+        weight: 1.5,
+        shippingAddress: {
+          name: zixUser.name,
+          phone: '+919999999999',
+          address: '123 Tech Park',
+          city: 'Bangalore',
+          state: 'Karnataka',
+          postalCode: '560001',
+          country: 'India'
+        },
+        status: 'in_transit',
+        trackingEvents: [
+          { status: 'created', location: 'Origin Facility', description: 'Shipment created' },
+          { status: 'in_transit', location: 'Bangalore Hub', description: 'Package in transit' }
+        ],
+        cost: 150
+      });
+    }
+
+    // Seed mock invoice
+    const Invoice = require('../../models/Invoice');
+    let testInvoice = await Invoice.findOne({ order: testOrder._id });
+    if (!testInvoice) {
+      testInvoice = await Invoice.create({
+        invoiceNumber: 'INV-' + new Date().toISOString().split('T')[0].replace(/-/g, '') + '-00099',
+        order: testOrder._id,
+        user: zixUser._id,
+        invoiceDate: new Date(),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        status: 'paid',
+        billingAddress: {
+          name: zixUser.name,
+          email: zixUser.email,
+          phone: '+919999999999',
+          address: '123 Tech Park',
+          city: 'Bangalore',
+          state: 'Karnataka',
+          postalCode: '560001',
+          country: 'India'
+        },
+        shippingAddress: {
+          name: zixUser.name,
+          phone: '+919999999999',
+          address: '123 Tech Park',
+          city: 'Bangalore',
+          state: 'Karnataka',
+          postalCode: '560001',
+          country: 'India'
+        },
+        items: [
+          {
+            product: testProduct._id,
+            description: testProduct.title,
+            quantity: 1,
+            unitPrice: testProduct.price,
+            total: testProduct.price
+          }
+        ],
+        subtotal: testProduct.price,
+        tax: { amount: 539, rate: 18 },
+        shippingCost: 49,
+        total: testProduct.price + 49 + 539,
+        amountPaid: testProduct.price + 49 + 539,
+        amountDue: 0,
+        terms: 'Due on receipt'
+      });
+    }
+
     const FeatureToggle = require('../../models/FeatureToggle');
     const defaultToggles = [
       {
