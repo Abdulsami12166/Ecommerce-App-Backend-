@@ -110,6 +110,37 @@ router.get('/auth/seed', async (req, res, next) => {
       await zixUser.save();
     }
 
+    // Seed mock UserActivity logs for Zix
+    const UserActivity = require('../../models/UserActivity');
+    // ponytail: delete existing activities for Zix to keep seed action idempotent
+    await UserActivity.deleteMany({ user: zixUser._id });
+    await UserActivity.create([
+      {
+        user: zixUser._id,
+        action: 'login',
+        details: 'Zix signed in successfully.',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        createdAt: new Date(Date.now() - 3 * 3600 * 1000)
+      },
+      {
+        user: zixUser._id,
+        action: 'logout',
+        details: 'Zix signed out.',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        createdAt: new Date(Date.now() - 2 * 3600 * 1000)
+      },
+      {
+        user: zixUser._id,
+        action: 'login',
+        details: 'Zix signed in successfully.',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        createdAt: new Date(Date.now() - 1 * 3600 * 1000)
+      }
+    ]);
+
     // Seed mock product
     const Product = require('../../models/Product');
     let testProduct = await Product.findOne({});
