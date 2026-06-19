@@ -627,7 +627,7 @@ exports.sendDirectNotification = asyncHandler(async (req, res) => {
   for (const user of targets) {
     if (channel === 'push') {
       if (user.fcmToken) {
-        await sendPushNotification(user.fcmToken, title || 'System Alert', body, {}, user._id);
+        await sendPushNotification(user.fcmToken, title || 'System Alert', body, { screen: 'Notifications', event: 'admin.broadcast' }, user._id);
         successCount++;
       } else {
         // Fallback log
@@ -682,6 +682,16 @@ exports.sendDirectNotification = asyncHandler(async (req, res) => {
         recipient: { userId: user._id },
         createdAt: log.createdAt,
       });
+
+      if (channel === 'inApp') {
+        const { emitToUser } = require('../../shared/events/eventBus');
+        emitToUser(null, user._id, 'notification.inapp', {
+          id: String(log._id),
+          title: title || 'System Alert',
+          message: body,
+          createdAt: log.createdAt
+        });
+      }
 
       successCount++;
     }
