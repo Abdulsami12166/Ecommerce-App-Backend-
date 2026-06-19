@@ -9,11 +9,39 @@ const {
 const { auditAction, auditError } = require('../../utils/workflow');
 const { sendOrderStatusNotification } = require('../../shared/services/pushNotificationService');
 
+const syncShipmentStatusesWithOrders = async () => {
+  try {
+    const shipments = await Shipment.find().populate('order');
+    for (const sh of shipments) {
+      if (!sh.order) continue;
+      let targetStatus = null;
+      if (sh.order.orderStatus === 'delivered' && sh.status !== 'delivered') {
+        targetStatus = 'delivered';
+        sh.actualDeliveryDate = sh.actualDeliveryDate || new Date();
+      } else if (sh.order.orderStatus === 'shipped' && sh.status !== 'in_transit' && sh.status !== 'shipped') {
+        targetStatus = 'shipped';
+      } else if (sh.order.orderStatus === 'out-for-delivery' && sh.status !== 'out_for_delivery') {
+        targetStatus = 'out_for_delivery';
+      } else if (sh.order.orderStatus === 'packed' && sh.status !== 'packed') {
+        targetStatus = 'packed';
+      }
+
+      if (targetStatus) {
+        sh.status = targetStatus;
+        await sh.save();
+      }
+    }
+  } catch (err) {
+    console.error('Failed to sync shipment statuses with orders:', err.message);
+  }
+};
+
 /**
  * Get all shipments
  */
 exports.getAllShipments = async (req, res) => {
   try {
+    await syncShipmentStatusesWithOrders();
     const { page = 1, limit = 20, status, trackingNumber, search, sortBy = '-createdAt' } = req.query;
     const skip = (page - 1) * limit;
 
@@ -43,7 +71,11 @@ exports.getAllShipments = async (req, res) => {
 
     const total = await Shipment.countDocuments(query);
     const shipments = await Shipment.find(query)
-      .populate('order', 'razorpayOrderId totalAmount')
+      .populate({
+        path: 'order',
+        select: 'razorpayOrderId totalAmount items user',
+        populate: { path: 'user', select: 'name email' }
+      })
       .sort(sortBy)
       .skip(skip)
       .limit(parseInt(limit));
@@ -206,7 +238,7 @@ exports.updateTrackingStatus = async (req, res) => {
     let orderStatus = null;
     if (status === 'packed') {
       orderStatus = 'packed';
-    } else if (status === 'in_transit') {
+    } else if (status === 'in_transit' || status === 'shipped') {
       orderStatus = 'shipped';
     } else if (status === 'out_for_delivery') {
       orderStatus = 'out-for-delivery';
@@ -321,6 +353,7 @@ exports.getTrackingHistory = async (req, res) => {
  */
 exports.getShipmentsByStatus = async (req, res) => {
   try {
+    await syncShipmentStatusesWithOrders();
     const { status } = req.params;
     const { limit = 50 } = req.query;
 
@@ -333,7 +366,11 @@ exports.getShipmentsByStatus = async (req, res) => {
     }
 
     const shipments = await Shipment.find(query)
-      .populate('order', 'razorpayOrderId totalAmount')
+      .populate({
+        path: 'order',
+        select: 'razorpayOrderId totalAmount items user',
+        populate: { path: 'user', select: 'name email' }
+      })
       .limit(parseInt(limit))
       .sort('-createdAt');
 
@@ -351,6 +388,7 @@ exports.getShipmentsByStatus = async (req, res) => {
  */
 exports.getShipmentStats = async (req, res) => {
   try {
+    await syncShipmentStatusesWithOrders();
     const stats = await Shipment.aggregate([
       {
         $group: {
@@ -381,10 +419,12 @@ exports.getShipmentStats = async (req, res) => {
     ]);
 
     const byStatus = stats.reduce((acc, s) => ({ ...acc, [s._id]: s.count }), {});
+    const inTransitCount = (byStatus.in_transit || 0) + (byStatus.shipped || 0);
     return sendSuccess(res, 200, 'Shipment statistics fetched successfully', {
       byStatus,
       pending: byStatus.pending || 0,
-      inTransit: byStatus.in_transit || 0,
+      inTransit: inTransitCount,
+      shipped: inTransitCount,
       delivered: byStatus.delivered || 0,
       failed: byStatus.failed || 0,
       total,
