@@ -71,7 +71,11 @@ exports.getAllShipments = async (req, res) => {
 
     const total = await Shipment.countDocuments(query);
     const shipments = await Shipment.find(query)
-      .populate('order', 'razorpayOrderId totalAmount')
+      .populate({
+        path: 'order',
+        select: 'razorpayOrderId totalAmount items user',
+        populate: { path: 'user', select: 'name email' }
+      })
       .sort(sortBy)
       .skip(skip)
       .limit(parseInt(limit));
@@ -362,7 +366,11 @@ exports.getShipmentsByStatus = async (req, res) => {
     }
 
     const shipments = await Shipment.find(query)
-      .populate('order', 'razorpayOrderId totalAmount')
+      .populate({
+        path: 'order',
+        select: 'razorpayOrderId totalAmount items user',
+        populate: { path: 'user', select: 'name email' }
+      })
       .limit(parseInt(limit))
       .sort('-createdAt');
 
