@@ -148,14 +148,17 @@ const emitToAll = (app, event, payload) => {
 
 const emitToUser = (app, userId, event, payload) => {
   const io = getIo(app);
-  if (!io || !userId) return;
-  io.to(socketEvents.ROOMS.user(String(userId))).emit(event, payload);
+  if (io && userId) {
+    io.to(socketEvents.ROOMS.user(String(userId))).emit(event, payload);
+  }
 
-  try {
-    const { triggerEventNotifications } = require('../services/notificationTriggerService');
-    triggerEventNotifications(event, { ...payload, userId }).catch(err => console.error(err));
-  } catch (err) {
-    console.error('Failed to trigger event notifications:', err);
+  if (userId) {
+    try {
+      const { triggerEventNotifications } = require('../services/notificationTriggerService');
+      triggerEventNotifications(event, { ...payload, userId }).catch(err => console.error(err));
+    } catch (err) {
+      console.error('Failed to trigger event notifications:', err);
+    }
   }
 };
 
