@@ -20,7 +20,12 @@ exports.getAllShipments = async (req, res) => {
     let query = {};
 
     if (status) {
-      query.status = status;
+      const normalizedStatus = status.toLowerCase();
+      if (normalizedStatus === 'shipped' || normalizedStatus === 'in_transit') {
+        query.status = { $in: ['shipped', 'in_transit'] };
+      } else {
+        query.status = { $regex: new RegExp(`^${status}$`, 'i') };
+      }
     }
 
     if (trackingNumber) {
@@ -319,7 +324,15 @@ exports.getShipmentsByStatus = async (req, res) => {
     const { status } = req.params;
     const { limit = 50 } = req.query;
 
-    const shipments = await Shipment.find({ status })
+    let query = {};
+    const normalizedStatus = status.toLowerCase();
+    if (normalizedStatus === 'shipped' || normalizedStatus === 'in_transit') {
+      query.status = { $in: ['shipped', 'in_transit'] };
+    } else {
+      query.status = { $regex: new RegExp(`^${status}$`, 'i') };
+    }
+
+    const shipments = await Shipment.find(query)
       .populate('order', 'razorpayOrderId totalAmount')
       .limit(parseInt(limit))
       .sort('-createdAt');
