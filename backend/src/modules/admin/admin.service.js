@@ -413,6 +413,33 @@ const updateOrderStatus = async (orderId, payload, app) => {
   }
 
   await adminRepository.saveOrder(order);
+
+  // Update shipment status if it exists to keep in sync
+  try {
+    const Shipment = require('../../models/Shipment');
+    const shipment = await Shipment.findOne({ order: order._id });
+    if (shipment) {
+      let shipmentStatus = null;
+      if (nextStatus === 'delivered') {
+        shipmentStatus = 'delivered';
+        shipment.actualDeliveryDate = shipment.actualDeliveryDate || new Date();
+      } else if (nextStatus === 'shipped') {
+        shipmentStatus = 'shipped';
+      } else if (nextStatus === 'out-for-delivery') {
+        shipmentStatus = 'out_for_delivery';
+      } else if (nextStatus === 'packed') {
+        shipmentStatus = 'packed';
+      }
+      
+      if (shipmentStatus && shipment.status !== shipmentStatus) {
+        shipment.status = shipmentStatus;
+        await shipment.save();
+      }
+    }
+  } catch (err) {
+    console.error('Failed to update shipment status on order status change:', err.message);
+  }
+
   await adminRepository.createActivity({
     user: order.user,
     action: 'order',
@@ -478,6 +505,32 @@ const addOrderTimelineEvent = async (orderId, payload, adminUserId, app) => {
   });
 
   await adminRepository.saveOrder(order);
+
+  // Update shipment status if it exists to keep in sync
+  try {
+    const Shipment = require('../../models/Shipment');
+    const shipment = await Shipment.findOne({ order: order._id });
+    if (shipment) {
+      let shipmentStatus = null;
+      if (nextStatus === 'delivered') {
+        shipmentStatus = 'delivered';
+        shipment.actualDeliveryDate = shipment.actualDeliveryDate || new Date();
+      } else if (nextStatus === 'shipped') {
+        shipmentStatus = 'shipped';
+      } else if (nextStatus === 'out-for-delivery') {
+        shipmentStatus = 'out_for_delivery';
+      } else if (nextStatus === 'packed') {
+        shipmentStatus = 'packed';
+      }
+      
+      if (shipmentStatus && shipment.status !== shipmentStatus) {
+        shipment.status = shipmentStatus;
+        await shipment.save();
+      }
+    }
+  } catch (err) {
+    console.error('Failed to update shipment status on order status change:', err.message);
+  }
 
   const eventPayload = {
     orderId: String(order._id),

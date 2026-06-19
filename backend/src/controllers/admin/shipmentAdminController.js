@@ -9,11 +9,39 @@ const {
 const { auditAction, auditError } = require('../../utils/workflow');
 const { sendOrderStatusNotification } = require('../../shared/services/pushNotificationService');
 
+const syncShipmentStatusesWithOrders = async () => {
+  try {
+    const shipments = await Shipment.find().populate('order');
+    for (const sh of shipments) {
+      if (!sh.order) continue;
+      let targetStatus = null;
+      if (sh.order.orderStatus === 'delivered' && sh.status !== 'delivered') {
+        targetStatus = 'delivered';
+        sh.actualDeliveryDate = sh.actualDeliveryDate || new Date();
+      } else if (sh.order.orderStatus === 'shipped' && sh.status !== 'in_transit' && sh.status !== 'shipped') {
+        targetStatus = 'shipped';
+      } else if (sh.order.orderStatus === 'out-for-delivery' && sh.status !== 'out_for_delivery') {
+        targetStatus = 'out_for_delivery';
+      } else if (sh.order.orderStatus === 'packed' && sh.status !== 'packed') {
+        targetStatus = 'packed';
+      }
+
+      if (targetStatus) {
+        sh.status = targetStatus;
+        await sh.save();
+      }
+    }
+  } catch (err) {
+    console.error('Failed to sync shipment statuses with orders:', err.message);
+  }
+};
+
 /**
  * Get all shipments
  */
 exports.getAllShipments = async (req, res) => {
   try {
+    await syncShipmentStatusesWithOrders();
     const { page = 1, limit = 20, status, trackingNumber, search, sortBy = '-createdAt' } = req.query;
     const skip = (page - 1) * limit;
 
@@ -320,6 +348,7 @@ exports.getTrackingHistory = async (req, res) => {
  */
 exports.getShipmentsByStatus = async (req, res) => {
   try {
+    await syncShipmentStatusesWithOrders();
     const { status } = req.params;
     const { limit = 50 } = req.query;
 
@@ -349,6 +378,7 @@ exports.getShipmentsByStatus = async (req, res) => {
  */
 exports.getShipmentStats = async (req, res) => {
   try {
+    await syncShipmentStatusesWithOrders();
     const stats = await Shipment.aggregate([
       {
         $group: {
