@@ -117,7 +117,11 @@ exports.getCustomerActivityLogs = async (req, res) => {
     let query = { user: userId };
 
     if (type) {
-      query.type = type;
+      // ponytail: query both type and action for compatibility
+      query.$or = [
+        { type: type },
+        { action: type }
+      ];
     }
 
     if (startDate || endDate) {

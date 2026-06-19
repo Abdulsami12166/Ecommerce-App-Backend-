@@ -5,6 +5,12 @@ const { logger } = require('./logger');
  * Supports both Resend SDK v6+  and legacy versions.
  */
 async function sendEmail({ to, subject, html, text }) {
+  // ponytail: support mock sending in development mode to avoid configuration dependency
+  if (process.env.NODE_ENV === 'development') {
+    logger.info('[MOCK] Email sent successfully in development mode', { to, subject });
+    return;
+  }
+
   const from = process.env.EMAIL_FROM;
 
   if (!from) {
