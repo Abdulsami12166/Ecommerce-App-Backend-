@@ -7,7 +7,7 @@ const reportsController = {
     try {
       const { startDate, endDate } = req.query;
       const report = await reportsRepository.getSalesReport(startDate, endDate);
-      return sendSuccessResponse(res, report, 'Sales report fetched successfully');
+      return sendSuccessResponse(res, { data: report }, 'Sales report fetched successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
     }
@@ -18,7 +18,7 @@ const reportsController = {
     try {
       const { startDate, endDate } = req.query;
       const report = await reportsRepository.getUserReport(startDate, endDate);
-      return sendSuccessResponse(res, report, 'User report fetched successfully');
+      return sendSuccessResponse(res, { data: report }, 'User report fetched successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
     }
@@ -29,7 +29,7 @@ const reportsController = {
     try {
       const { startDate, endDate } = req.query;
       const report = await reportsRepository.getProductReport(startDate, endDate);
-      return sendSuccessResponse(res, report, 'Product report fetched successfully');
+      return sendSuccessResponse(res, { data: report }, 'Product report fetched successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
     }
@@ -40,7 +40,7 @@ const reportsController = {
     try {
       const { startDate, endDate } = req.query;
       const report = await reportsRepository.getInventoryReport(startDate, endDate);
-      return sendSuccessResponse(res, report, 'Inventory report fetched successfully');
+      return sendSuccessResponse(res, { data: report }, 'Inventory report fetched successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
     }
@@ -51,7 +51,7 @@ const reportsController = {
     try {
       const { startDate, endDate } = req.query;
       const report = await reportsRepository.getTicketReport(startDate, endDate);
-      return sendSuccessResponse(res, report, 'Ticket report fetched successfully');
+      return sendSuccessResponse(res, { data: report }, 'Ticket report fetched successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
     }
@@ -90,7 +90,7 @@ const reportsController = {
       } else if (format === 'pdf') {
         // For PDF, you would need a PDF generation library like pdfkit or puppeteer
         // For now, return JSON
-        return sendSuccessResponse(res, report, 'PDF export not implemented yet');
+        return sendSuccessResponse(res, { data: report }, 'PDF export not implemented yet');
       } else {
         return sendErrorResponse(res, 'Invalid format', 400);
       }

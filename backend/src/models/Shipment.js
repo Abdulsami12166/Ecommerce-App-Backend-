@@ -4,7 +4,7 @@ const trackingEventSchema = new mongoose.Schema(
   {
     status: { 
       type: String, 
-      enum: ['created', 'picked', 'packed', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'returned'],
+      enum: ['created', 'picked', 'packed', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'returned', 'shipped'],
       required: true 
     },
     location: { type: String, default: '' },
@@ -39,7 +39,7 @@ const shipmentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'picked', 'packed', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'returned'],
+      enum: ['pending', 'picked', 'packed', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'returned', 'shipped'],
       default: 'pending',
     },
     trackingEvents: [trackingEventSchema],

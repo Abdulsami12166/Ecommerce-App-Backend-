@@ -20,7 +20,11 @@ exports.getAllShipments = async (req, res) => {
     let query = {};
 
     if (status) {
-      query.status = status;
+      if (status === 'shipped' || status === 'in_transit') {
+        query.status = { $in: ['shipped', 'in_transit'] };
+      } else {
+        query.status = status;
+      }
     }
 
     if (trackingNumber) {
@@ -201,7 +205,7 @@ exports.updateTrackingStatus = async (req, res) => {
     let orderStatus = null;
     if (status === 'packed') {
       orderStatus = 'packed';
-    } else if (status === 'in_transit') {
+    } else if (status === 'in_transit' || status === 'shipped') {
       orderStatus = 'shipped';
     } else if (status === 'out_for_delivery') {
       orderStatus = 'out-for-delivery';
@@ -319,7 +323,14 @@ exports.getShipmentsByStatus = async (req, res) => {
     const { status } = req.params;
     const { limit = 50 } = req.query;
 
-    const shipments = await Shipment.find({ status })
+    let query = {};
+    if (status === 'shipped' || status === 'in_transit') {
+      query.status = { $in: ['shipped', 'in_transit'] };
+    } else {
+      query.status = status;
+    }
+
+    const shipments = await Shipment.find(query)
       .populate('order', 'razorpayOrderId totalAmount')
       .limit(parseInt(limit))
       .sort('-createdAt');
@@ -368,10 +379,12 @@ exports.getShipmentStats = async (req, res) => {
     ]);
 
     const byStatus = stats.reduce((acc, s) => ({ ...acc, [s._id]: s.count }), {});
+    const inTransitCount = (byStatus.in_transit || 0) + (byStatus.shipped || 0);
     return sendSuccess(res, 200, 'Shipment statistics fetched successfully', {
       byStatus,
       pending: byStatus.pending || 0,
-      inTransit: byStatus.in_transit || 0,
+      inTransit: inTransitCount,
+      shipped: inTransitCount,
       delivered: byStatus.delivered || 0,
       failed: byStatus.failed || 0,
       total,
