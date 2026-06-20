@@ -473,12 +473,12 @@ router.get('/inventory/stats', requireAdminAuth, authorizePermission('inventory:
 
 // ============ SHIPMENTS ============
 router.get('/shipments', requireAdminAuth, authorizePermission('orders:view'), shipmentController.getAllShipments);
+router.get('/shipments/stats/overview', requireAdminAuth, authorizePermission('analytics:view'), shipmentController.getShipmentStats);
+router.get('/shipments/status/:status', requireAdminAuth, authorizePermission('orders:view'), shipmentController.getShipmentsByStatus);
 router.get('/shipments/:shipmentId', requireAdminAuth, authorizePermission('orders:view'), shipmentController.getShipmentDetails);
 router.post('/shipments/order/:orderId', requireAdminAuth, authorizePermission('orders:update'), shipmentController.createShipment);
 router.patch('/shipments/:shipmentId/tracking', requireAdminAuth, authorizePermission('orders:update'), shipmentController.updateTrackingStatus);
 router.get('/shipments/:shipmentId/tracking-history', requireAdminAuth, authorizePermission('orders:view'), shipmentController.getTrackingHistory);
-router.get('/shipments/status/:status', requireAdminAuth, authorizePermission('orders:view'), shipmentController.getShipmentsByStatus);
-router.get('/shipments/stats/overview', requireAdminAuth, authorizePermission('analytics:view'), shipmentController.getShipmentStats);
 
 // ============ TICKETS ============
 router.get('/tickets', requireAdminAuth, authorizePermission('support:view'), ticketController.getAllTickets);
