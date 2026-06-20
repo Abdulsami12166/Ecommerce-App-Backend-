@@ -27,7 +27,7 @@ const reportsRepository = {
       date: order.createdAt,
       customer: order.user?.name || order.user?.email || 'Unknown',
       amount: order.totalAmount,
-      status: order.status,
+      status: order.orderStatus,
     }));
 
     return {

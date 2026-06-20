@@ -409,6 +409,12 @@ router.get('/users/:id/login-history', requireAdminAuth, authorizePermission('us
 router.get('/users/:id/payments', requireAdminAuth, authorizePermission('transactions:view'), (req, res, next) => {
   return userAdminController.getUserPayments(req, res, next);
 });
+router.get('/users/:id/tickets', requireAdminAuth, authorizePermission('users:view'), (req, res, next) => {
+  return userAdminController.getUserTickets(req, res, next);
+});
+router.get('/users/:id/refunds', requireAdminAuth, authorizePermission('users:view'), (req, res, next) => {
+  return userAdminController.getUserRefunds(req, res, next);
+});
 router.put('/customers/:userId/notification-preferences', requireAdminAuth, customerController.updateNotificationPreferences);
 router.get('/customers/stats/overview', requireAdminAuth, authorizePermission('analytics:view'), customerController.getCustomerStats);
 

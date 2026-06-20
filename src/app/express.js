@@ -25,6 +25,30 @@ const createExpressApp = () => {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
   app.use(requestLogger);
+  
+  // ponytail: native in-memory rate limiter to avoid express-rate-limit dependency
+  const rateLimits = new Map();
+  const rateLimiter = (req, res, next) => {
+    if (process.env.NODE_ENV === 'test') return next();
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000;
+    const limit = 200;
+    
+    if (!rateLimits.has(ip)) {
+      rateLimits.set(ip, []);
+    }
+    const requests = rateLimits.get(ip).filter(time => now - time < windowMs);
+    requests.push(now);
+    rateLimits.set(ip, requests);
+    
+    if (requests.length > limit) {
+      return res.status(429).json({ success: false, message: 'Too many requests, please try again later.' });
+    }
+    next();
+  };
+  app.use(rateLimiter);
+
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
   registerRoutes(app);
