@@ -8,7 +8,8 @@ const getFromEmail = () => {
     process.env.RESEND_FROM ||
     process.env.SMTP_FROM ||
     process.env.FROM_EMAIL ||
-    process.env.SMTP_USER
+    process.env.SMTP_USER ||
+    'onboarding@resend.dev'
   );
 };
 

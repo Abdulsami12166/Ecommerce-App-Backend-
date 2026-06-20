@@ -5,7 +5,7 @@ const { logger } = require('./logger');
  * Supports both Resend SDK v6+  and legacy versions.
  */
 async function sendEmail({ to, subject, html, text }) {
-  const from = process.env.EMAIL_FROM || process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.FROM_EMAIL || process.env.SMTP_USER;
+  const from = process.env.EMAIL_FROM || process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.FROM_EMAIL || process.env.SMTP_USER || 'onboarding@resend.dev';
   const resendKey = process.env.RESEND_API_KEY;
   const smtpHost = process.env.SMTP_HOST;
 
