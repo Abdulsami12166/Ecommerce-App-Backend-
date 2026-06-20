@@ -7,7 +7,7 @@ const { logger } = require('./logger');
 async function sendEmail({ to, subject, html, text }) {
   // ponytail: support mock sending in development mode to avoid configuration dependency
   if (process.env.NODE_ENV === 'development') {
-    logger.info('[MOCK] Email sent successfully in development mode', { to, subject });
+    logger.info(`[MOCK] Email sent successfully in development mode to: ${to}, subject: ${subject}. Content: ${text || html}`);
     return;
   }
 

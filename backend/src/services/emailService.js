@@ -27,7 +27,7 @@ const sendOtpEmail = async ({ toEmail, otpCode }) => {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const result = await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from:
       process.env.RESEND_FROM_NAME && process.env.RESEND_FROM_NAME.trim()
         ? `${process.env.RESEND_FROM_NAME} <${from}>`
@@ -44,13 +44,15 @@ const sendOtpEmail = async ({ toEmail, otpCode }) => {
     `,
   });
 
+  if (error) {
+    throw new Error(error.message || 'Resend API returned an error');
+  }
+
   return {
-    messageId: result?.id || '',
+    messageId: data?.id || '',
   };
 };
 
 module.exports = {
   sendOtpEmail,
 };
-
-
