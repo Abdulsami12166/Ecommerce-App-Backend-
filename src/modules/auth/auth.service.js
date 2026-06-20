@@ -292,12 +292,19 @@ const verifyRecaptcha = (token) => {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
+          if (!parsed.success) {
+            logger.error('reCAPTCHA validation failed', { errorCodes: parsed['error-codes'], hostname: parsed.hostname });
+          } else {
+            logger.info('reCAPTCHA validation succeeded', { score: parsed.score, action: parsed.action });
+          }
           resolve(!!parsed.success);
         } catch (e) {
+          logger.error('Error parsing reCAPTCHA response', { error: e.message });
           resolve(false);
         }
       });
-    }).on('error', () => {
+    }).on('error', (err) => {
+      logger.error('reCAPTCHA siteverify request failed', { error: err.message });
       resolve(false);
     });
   });
