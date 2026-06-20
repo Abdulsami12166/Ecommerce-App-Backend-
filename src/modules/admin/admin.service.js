@@ -11,6 +11,13 @@ const slugify = value =>
     .replace(/^-+|-+$/g, '');
 
 const getDashboardMetrics = async () => {
+  try {
+    const { syncShipmentStatusesWithOrders } = require('../../controllers/admin/shipmentAdminController');
+    await syncShipmentStatusesWithOrders();
+  } catch (err) {
+    console.error('Failed to sync shipments during dashboard metrics fetch:', err.message);
+  }
+
   const now = new Date();
   const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -164,21 +171,59 @@ const getCustomerDetail = async userId => {
     updatedAt: order.updatedAt,
   }));
 
-  const addresses = orders
-    .map(order => order.address)
-    .filter(Boolean)
-    .map(address => ({
-      _id: address._id,
-      type: address.type || address.label || 'Shipping',
-      address: [
-        address.addressLine1,
-        address.addressLine2,
-        address.city,
-        address.state,
-        address.postalCode || address.pincode,
-        address.country,
-      ].filter(Boolean).join(', ') || String(address),
-    }));
+  const orderIds = orders.map(order => order._id);
+  const Shipment = require('../../models/Shipment');
+  const shipments = await Shipment.find({ order: { $in: orderIds } });
+
+  const addressList = [];
+  const seenAddresses = new Set();
+
+  orders.forEach(order => {
+    if (order.address) {
+      const addr = order.address;
+      const formatted = [
+        addr.addressLine1,
+        addr.addressLine2,
+        addr.city,
+        addr.state,
+        addr.postalCode || addr.pincode,
+        addr.country,
+      ].filter(Boolean).join(', ') || String(addr);
+
+      if (formatted && !seenAddresses.has(formatted)) {
+        seenAddresses.add(formatted);
+        addressList.push({
+          _id: addr._id || order._id,
+          type: addr.type || addr.label || 'Shipping',
+          address: formatted,
+        });
+      }
+    }
+  });
+
+  shipments.forEach(shipment => {
+    if (shipment.shippingAddress) {
+      const sAddr = shipment.shippingAddress;
+      const formatted = [
+        sAddr.address,
+        sAddr.city,
+        sAddr.state,
+        sAddr.postalCode,
+        sAddr.country,
+      ].filter(Boolean).join(', ');
+
+      if (formatted && !seenAddresses.has(formatted)) {
+        seenAddresses.add(formatted);
+        addressList.push({
+          _id: shipment._id,
+          type: 'Shipping',
+          address: formatted,
+        });
+      }
+    }
+  });
+
+  const addresses = addressList;
 
   return {
     customer: {
@@ -413,6 +458,33 @@ const updateOrderStatus = async (orderId, payload, app) => {
   }
 
   await adminRepository.saveOrder(order);
+
+  // Update shipment status if it exists to keep in sync
+  try {
+    const Shipment = require('../../models/Shipment');
+    const shipment = await Shipment.findOne({ order: order._id });
+    if (shipment) {
+      let shipmentStatus = null;
+      if (nextStatus === 'delivered') {
+        shipmentStatus = 'delivered';
+        shipment.actualDeliveryDate = shipment.actualDeliveryDate || new Date();
+      } else if (nextStatus === 'shipped') {
+        shipmentStatus = 'shipped';
+      } else if (nextStatus === 'out-for-delivery') {
+        shipmentStatus = 'out_for_delivery';
+      } else if (nextStatus === 'packed') {
+        shipmentStatus = 'packed';
+      }
+      
+      if (shipmentStatus && shipment.status !== shipmentStatus) {
+        shipment.status = shipmentStatus;
+        await shipment.save();
+      }
+    }
+  } catch (err) {
+    console.error('Failed to update shipment status on order status change:', err.message);
+  }
+
   await adminRepository.createActivity({
     user: order.user,
     action: 'order',
@@ -478,6 +550,32 @@ const addOrderTimelineEvent = async (orderId, payload, adminUserId, app) => {
   });
 
   await adminRepository.saveOrder(order);
+
+  // Update shipment status if it exists to keep in sync
+  try {
+    const Shipment = require('../../models/Shipment');
+    const shipment = await Shipment.findOne({ order: order._id });
+    if (shipment) {
+      let shipmentStatus = null;
+      if (nextStatus === 'delivered') {
+        shipmentStatus = 'delivered';
+        shipment.actualDeliveryDate = shipment.actualDeliveryDate || new Date();
+      } else if (nextStatus === 'shipped') {
+        shipmentStatus = 'shipped';
+      } else if (nextStatus === 'out-for-delivery') {
+        shipmentStatus = 'out_for_delivery';
+      } else if (nextStatus === 'packed') {
+        shipmentStatus = 'packed';
+      }
+      
+      if (shipmentStatus && shipment.status !== shipmentStatus) {
+        shipment.status = shipmentStatus;
+        await shipment.save();
+      }
+    }
+  } catch (err) {
+    console.error('Failed to update shipment status on order status change:', err.message);
+  }
 
   const eventPayload = {
     orderId: String(order._id),

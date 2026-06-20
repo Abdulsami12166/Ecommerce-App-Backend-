@@ -11,8 +11,68 @@ const { sendOrderStatusNotification } = require('../../shared/services/pushNotif
 
 const syncShipmentStatusesWithOrders = async () => {
   try {
+    const Order = require('../../models/Order');
     const shipments = await Shipment.find().populate('order');
-    for (const sh of shipments) {
+    
+    // Find all orders that should have a shipment
+    const eligibleOrders = await Order.find({
+      orderStatus: { $in: ['shipped', 'delivered', 'out-for-delivery', 'packed'] }
+    }).populate('user');
+
+    for (const order of eligibleOrders) {
+      const existing = shipments.find(s => String(s.order?._id || s.order) === String(order._id));
+      if (!existing) {
+        let shipmentStatus = 'pending';
+        if (order.orderStatus === 'delivered') {
+          shipmentStatus = 'delivered';
+        } else if (order.orderStatus === 'shipped') {
+          shipmentStatus = 'shipped';
+        } else if (order.orderStatus === 'out-for-delivery') {
+          shipmentStatus = 'out_for_delivery';
+        } else if (order.orderStatus === 'packed') {
+          shipmentStatus = 'packed';
+        }
+
+        const newShipment = new Shipment({
+          order: order._id,
+          trackingNumber: 'TRK-' + String(order._id).slice(-6).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000),
+          carrier: 'Standard',
+          estimatedDeliveryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          weight: 1.0,
+          shippingAddress: {
+            name: order.user?.name || 'Customer',
+            phone: order.user?.phone || '9999999999',
+            address: 'Default Address',
+            city: 'Default City',
+            state: 'Default State',
+            postalCode: '000000',
+            country: 'Default Country'
+          },
+          status: shipmentStatus,
+          trackingEvents: [
+            {
+              status: 'created',
+              location: 'Origin Facility',
+              description: 'Shipment created'
+            }
+          ]
+        });
+
+        if (shipmentStatus === 'delivered') {
+          newShipment.actualDeliveryDate = new Date();
+          newShipment.trackingEvents.push({
+            status: 'delivered',
+            location: 'Destination',
+            description: 'Package delivered'
+          });
+        }
+        await newShipment.save();
+      }
+    }
+
+    // Refresh shipments list after creating any missing ones
+    const updatedShipments = await Shipment.find().populate('order');
+    for (const sh of updatedShipments) {
       if (!sh.order) continue;
       let targetStatus = null;
       if (sh.order.orderStatus === 'delivered' && sh.status !== 'delivered') {
@@ -35,6 +95,8 @@ const syncShipmentStatusesWithOrders = async () => {
     console.error('Failed to sync shipment statuses with orders:', err.message);
   }
 };
+
+exports.syncShipmentStatusesWithOrders = syncShipmentStatusesWithOrders;
 
 /**
  * Get all shipments

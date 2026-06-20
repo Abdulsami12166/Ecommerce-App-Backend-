@@ -157,6 +157,10 @@ router.get('/auth/seed', async (req, res, next) => {
       });
     }
 
+    // Seed Zix wishlist
+    zixUser.wishlist = [testProduct._id];
+    await zixUser.save();
+
     // Seed mock order
     const Order = require('../../models/Order');
     let testOrder = await Order.findOne({ user: zixUser._id });
@@ -267,7 +271,39 @@ router.get('/auth/seed', async (req, res, next) => {
         terms: 'Due on receipt'
       });
     }
+    // Seed mock SupportTicket
+    const SupportTicket = require('../../models/SupportTicket');
+    await SupportTicket.deleteMany({ user: zixUser._id });
+    await SupportTicket.create({
+      user: zixUser._id,
+      order: testOrder._id,
+      subject: 'Mock Ticket for Zix',
+      description: 'Zix needs support for standard delivery issues.',
+      category: 'delivery',
+      priority: 'high',
+      status: 'open',
+      messages: [
+        {
+          senderType: 'user',
+          sender: zixUser._id,
+          message: 'Standard delivery taking too long, please help.'
+        }
+      ]
+    });
 
+    // Seed mock RefundRequest
+    const RefundRequest = require('../../models/RefundRequest');
+    await RefundRequest.deleteMany({ user: zixUser._id });
+    await RefundRequest.create({
+      user: zixUser._id,
+      order: testOrder._id,
+      items: [testProduct._id],
+      reason: 'return',
+      refundType: 'full',
+      refundAmount: testOrder.totalAmount,
+      status: 'initiated',
+      notes: 'Zix is requesting refund for delay in delivery.'
+    });
     const FeatureToggle = require('../../models/FeatureToggle');
     const defaultToggles = [
       {
@@ -363,6 +399,14 @@ router.get('/auth/seed', async (req, res, next) => {
       if (!existing) {
         await StoreSetting.create({ ...s, isEditable: true });
       }
+    }
+
+    // Sync shipment statuses with orders
+    try {
+      const { syncShipmentStatusesWithOrders } = require('../../controllers/admin/shipmentAdminController');
+      await syncShipmentStatusesWithOrders();
+    } catch (syncErr) {
+      console.error('[Seed] Shipment status sync failed:', syncErr.message);
     }
 
     return res.json({ success: true, message: 'Database seeded successfully', data: results });
