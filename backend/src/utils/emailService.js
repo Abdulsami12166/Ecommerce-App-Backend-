@@ -5,20 +5,22 @@ const { logger } = require('./logger');
  * Supports both Resend SDK v6+  and legacy versions.
  */
 async function sendEmail({ to, subject, html, text }) {
-  // ponytail: support mock sending in development mode to avoid configuration dependency
-  if (process.env.NODE_ENV === 'development') {
+  const from = process.env.EMAIL_FROM || process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.FROM_EMAIL || process.env.SMTP_USER;
+  const resendKey = process.env.RESEND_API_KEY;
+  const smtpHost = process.env.SMTP_HOST;
+
+  const hasConfig = !!(from && (resendKey || smtpHost));
+
+  // ponytail: support mock sending in development mode only to avoid configuration dependency
+  if (!hasConfig && process.env.NODE_ENV === 'development') {
     logger.info(`[MOCK] Email sent successfully in development mode to: ${to}, subject: ${subject}. Content: ${text || html}`);
     return;
   }
 
-  const from = process.env.EMAIL_FROM;
-
   if (!from) {
-    logger.warn('EMAIL_FROM is not set; cannot send email', { to, subject });
-    throw new Error('EMAIL_FROM is not configured on the server.');
+    logger.warn('Email sender address is not set; cannot send email', { to, subject });
+    throw new Error('Email sender is not configured on the server.');
   }
-
-  const resendKey = process.env.RESEND_API_KEY;
 
   // ── Primary: Resend ──────────────────────────────────
   if (resendKey) {
@@ -45,6 +47,10 @@ async function sendEmail({ to, subject, html, text }) {
         html,
         text: text || html?.replace(/<[^>]+>/g, ' '),
       });
+
+      if (result?.error) {
+        throw new Error(result.error.message || 'Resend API returned an error');
+      }
 
       const resendId = result?.data?.id || 'unknown';
       logger.info('Email sent via Resend', { to, subject, resendId });
