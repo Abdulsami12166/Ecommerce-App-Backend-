@@ -21,6 +21,9 @@ const orderTimelineController = require('../../controllers/admin/orderTimelineAd
 const bulkOperationsController = require('../../controllers/admin/bulkOperationsAdminController');
 const replacementsController = require('../replacements/replacements.controller');
 const userAdminController = require('../../controllers/admin/userAdminController');
+const productAdminController = require('../../controllers/admin/productAdminController');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 const { hasPermission } = require('../../services/rbacService');
 
@@ -528,10 +531,10 @@ router.get('/replacements', requireAdminAuth, authorizePermission('orders:view')
 router.patch('/replacements/:replacementId/status', requireAdminAuth, authorizePermission('orders:update'), replacementsController.updateReplacementStatus);
 
 // ============ PRODUCTS ============
-router.get('/products', requireAdminAuth, authorizePermission('products:view'), adminController.getProducts);
-router.post('/products', requireAdminAuth, authorizePermission('products:create'), adminController.createProduct);
-router.put('/products/:id', requireAdminAuth, authorizePermission('products:create'), adminController.updateProduct);
-router.delete('/products/:id', requireAdminAuth, authorizePermission('products:delete'), adminController.deleteProduct);
+router.get('/products', requireAdminAuth, authorizePermission('products:view'), productAdminController.getAdminProducts);
+router.post('/products', requireAdminAuth, authorizePermission('products:create'), upload.array('images'), productAdminController.adminCreateProduct);
+router.put('/products/:id', requireAdminAuth, authorizePermission('products:create'), upload.array('images'), productAdminController.adminUpdateProduct);
+router.delete('/products/:id', requireAdminAuth, authorizePermission('products:delete'), productAdminController.adminDeleteProduct);
 
 // ============ ORDERS ============
 router.get('/orders', requireAdminAuth, authorizePermission('orders:view'), adminController.getOrders);
