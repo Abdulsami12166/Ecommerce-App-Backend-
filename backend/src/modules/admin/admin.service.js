@@ -11,6 +11,13 @@ const slugify = value =>
     .replace(/^-+|-+$/g, '');
 
 const getDashboardMetrics = async () => {
+  try {
+    const { syncShipmentStatusesWithOrders } = require('../../controllers/admin/shipmentAdminController');
+    await syncShipmentStatusesWithOrders();
+  } catch (err) {
+    console.error('Failed to sync shipments during dashboard metrics fetch:', err.message);
+  }
+
   const now = new Date();
   const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -164,21 +171,59 @@ const getCustomerDetail = async userId => {
     updatedAt: order.updatedAt,
   }));
 
-  const addresses = orders
-    .map(order => order.address)
-    .filter(Boolean)
-    .map(address => ({
-      _id: address._id,
-      type: address.type || address.label || 'Shipping',
-      address: [
-        address.addressLine1,
-        address.addressLine2,
-        address.city,
-        address.state,
-        address.postalCode || address.pincode,
-        address.country,
-      ].filter(Boolean).join(', ') || String(address),
-    }));
+  const orderIds = orders.map(order => order._id);
+  const Shipment = require('../../models/Shipment');
+  const shipments = await Shipment.find({ order: { $in: orderIds } });
+
+  const addressList = [];
+  const seenAddresses = new Set();
+
+  orders.forEach(order => {
+    if (order.address) {
+      const addr = order.address;
+      const formatted = [
+        addr.addressLine1,
+        addr.addressLine2,
+        addr.city,
+        addr.state,
+        addr.postalCode || addr.pincode,
+        addr.country,
+      ].filter(Boolean).join(', ') || String(addr);
+
+      if (formatted && !seenAddresses.has(formatted)) {
+        seenAddresses.add(formatted);
+        addressList.push({
+          _id: addr._id || order._id,
+          type: addr.type || addr.label || 'Shipping',
+          address: formatted,
+        });
+      }
+    }
+  });
+
+  shipments.forEach(shipment => {
+    if (shipment.shippingAddress) {
+      const sAddr = shipment.shippingAddress;
+      const formatted = [
+        sAddr.address,
+        sAddr.city,
+        sAddr.state,
+        sAddr.postalCode,
+        sAddr.country,
+      ].filter(Boolean).join(', ');
+
+      if (formatted && !seenAddresses.has(formatted)) {
+        seenAddresses.add(formatted);
+        addressList.push({
+          _id: shipment._id,
+          type: 'Shipping',
+          address: formatted,
+        });
+      }
+    }
+  });
+
+  const addresses = addressList;
 
   return {
     customer: {

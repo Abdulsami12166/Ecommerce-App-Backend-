@@ -96,6 +96,8 @@ const syncShipmentStatusesWithOrders = async () => {
   }
 };
 
+exports.syncShipmentStatusesWithOrders = syncShipmentStatusesWithOrders;
+
 /**
  * Get all shipments
  */

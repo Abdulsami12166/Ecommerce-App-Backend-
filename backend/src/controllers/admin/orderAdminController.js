@@ -109,6 +109,14 @@ const adminUpdateOrderStatus = async (req, res, next) => {
       console.error('[Invoice] Update failed on order status change:', invErr.message);
     }
 
+    // Sync shipment statuses with orders
+    try {
+      const { syncShipmentStatusesWithOrders } = require('./shipmentAdminController');
+      await syncShipmentStatusesWithOrders();
+    } catch (syncErr) {
+      console.error('[Shipment] Sync failed during order update:', syncErr.message);
+    }
+
     logger.info('Admin updated order status', { orderId: order._id });
 
     await UserActivity.create({
@@ -182,6 +190,14 @@ const adminCreateOrder = async (req, res, next) => {
       await generateInvoiceForOrder(order._id);
     } catch (invErr) {
       console.error('[Invoice] Auto-generation failed on admin order creation:', invErr.message);
+    }
+
+    // Sync shipment statuses with orders
+    try {
+      const { syncShipmentStatusesWithOrders } = require('./shipmentAdminController');
+      await syncShipmentStatusesWithOrders();
+    } catch (syncErr) {
+      console.error('[Shipment] Sync failed during admin order creation:', syncErr.message);
     }
     
     await UserActivity.create({
