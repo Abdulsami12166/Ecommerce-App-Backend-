@@ -319,16 +319,22 @@ const loginAdmin = async payload => {
   // ponytail: standard verification block for security
   if (process.env.NODE_ENV !== 'test') {
     if (!recaptchaToken) {
-      throw new AppError('reCAPTCHA verification is required', 400);
-    }
-    if (recaptchaToken !== 'mock_captcha_token') {
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('reCAPTCHA token is missing but allowed in development mode');
+      } else {
+        throw new AppError('reCAPTCHA verification is required', 400);
+      }
+    } else if (recaptchaToken !== 'mock_captcha_token') {
       const isCaptchaValid = await verifyRecaptcha(recaptchaToken);
       if (!isCaptchaValid) {
-        throw new AppError('reCAPTCHA verification failed', 400);
+        if (process.env.NODE_ENV === 'development') {
+          logger.warn('reCAPTCHA verification failed but allowed in development mode');
+        } else {
+          throw new AppError('reCAPTCHA verification failed', 400);
+        }
       }
     }
   }
-
   const user = await authRepository.findUserByEmailWithPassword(email);
   if (!user || !ADMIN_ROLES.has(normalizeRole(user.role))) {
     throw new AppError('Invalid admin credentials', 401);
