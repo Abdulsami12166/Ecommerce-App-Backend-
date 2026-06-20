@@ -454,7 +454,7 @@ exports.getShipmentStats = async (req, res) => {
     const stats = await Shipment.aggregate([
       {
         $group: {
-          _id: '$status',
+          _id: { $toLower: '$status' },
           count: { $sum: 1 }
         }
       }
