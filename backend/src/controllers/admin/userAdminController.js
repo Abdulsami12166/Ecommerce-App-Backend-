@@ -2,6 +2,8 @@ const User = require('../../models/User');
 const Order = require('../../models/Order');
 const UserActivity = require('../../models/UserActivity');
 const AuditLog = require('../../models/AuditLog');
+const SupportTicket = require('../../models/SupportTicket');
+const RefundRequest = require('../../models/RefundRequest');
 const {
   sendSuccess,
   sendError,
@@ -374,6 +376,44 @@ const getAdminProfile = async (req, res, next) => {
   }
 };
 
+const getUserTickets = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 50;
+    const skip = (Math.max(page, 1) - 1) * limit;
+
+    const query = { user: req.params.id };
+    const total = await SupportTicket.countDocuments(query);
+    const tickets = await SupportTicket.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return sendSuccess(res, 200, 'User tickets fetched successfully', { total, tickets });
+  } catch (e) {
+    next(e);
+  }
+};
+
+const getUserRefunds = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 50;
+    const skip = (Math.max(page, 1) - 1) * limit;
+
+    const query = { user: req.params.id };
+    const total = await RefundRequest.countDocuments(query);
+    const refunds = await RefundRequest.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return sendSuccess(res, 200, 'User refunds fetched successfully', { total, refunds });
+  } catch (e) {
+    next(e);
+  }
+};
+
 module.exports = {
   createAdminUser,
   getAdminAccessControl,
@@ -382,6 +422,8 @@ module.exports = {
   getUserActivities,
   getUserLoginHistory,
   getUserPayments,
+  getUserTickets,
+  getUserRefunds,
   adminDeleteUser,
   adminBlockUser,
   adminUnblockUser,
