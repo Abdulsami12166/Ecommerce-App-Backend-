@@ -34,7 +34,7 @@ module.exports = {
   getOrders: wrap(() => adminService.getOrders(), 'Admin orders fetched successfully'),
   getTransactions: wrap(() => adminService.getTransactions(), 'Admin transactions fetched successfully'),
   createOrder: wrap(req => adminService.createAdminOrder(req.body, req.app), 'Order created successfully', 201),
-  updateOrderStatus: wrap(req => adminService.updateOrderStatus(req.params.id, req.body, req.app), 'Order status updated successfully'),
+  updateOrderStatus: wrap(req => adminService.updateOrderStatus(req.params.id, req.body, req.app, req), 'Order status updated successfully'),
   deleteOrder: wrap(req => adminService.deleteOrder(req.params.id), 'Order deleted successfully'),
 
   // Order timeline

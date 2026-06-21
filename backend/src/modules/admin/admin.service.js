@@ -434,7 +434,7 @@ const createAdminOrder = async (payload, app) => {
   return { order };
 };
 
-const updateOrderStatus = async (orderId, payload, app) => {
+const updateOrderStatus = async (orderId, payload, app, req = null) => {
   const order = await adminRepository.getOrderById(orderId);
   if (!order) throw new AppError('Order not found', 404);
   const nextStatus = payload.orderStatus || order.orderStatus;
@@ -483,6 +483,27 @@ const updateOrderStatus = async (orderId, payload, app) => {
     }
   } catch (err) {
     console.error('Failed to update shipment status on order status change:', err.message);
+  }
+
+  const { logCustomerActivity } = require('../../utils/auditLogger');
+  if (payload.orderStatus === 'cancelled') {
+    await logCustomerActivity(
+      order.user,
+      'Order Cancelled',
+      'orders',
+      `Order ${String(order._id).slice(-6).toUpperCase()} was cancelled`,
+      order._id,
+      req
+    );
+  } else if (payload.orderStatus === 'returned') {
+    await logCustomerActivity(
+      order.user,
+      'Order Returned',
+      'orders',
+      `Order ${String(order._id).slice(-6).toUpperCase()} was marked as returned`,
+      order._id,
+      req
+    );
   }
 
   await adminRepository.createActivity({
