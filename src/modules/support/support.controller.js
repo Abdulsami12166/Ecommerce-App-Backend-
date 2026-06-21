@@ -2,6 +2,7 @@ const { ticketsRepository, returnsRepository, refundsRepository, ordersRepositor
 const { sendErrorResponse, sendSuccessResponse } = require('../../utils/responseHandler');
 const { emitToAdmins, emitToUser } = require('../../shared/events/eventBus');
 const { socketEvents } = require('../../shared/events/socketEvents');
+const { logCustomerActivity } = require('../../utils/auditLogger');
 
 const supportController = {
   // Create support ticket
@@ -56,6 +57,7 @@ const supportController = {
         subject: ticket.subject,
       });
 
+      await logCustomerActivity(userId, 'Ticket Created', 'support', `Ticket created with subject: "${ticket.subject}"`, ticket._id, req);
       return sendSuccessResponse(res, { ticket }, 'Ticket created successfully', 201);
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -139,6 +141,7 @@ const supportController = {
         status: refund.status,
       });
 
+      await logCustomerActivity(userId, 'Refund Requested', 'orders', `Refund requested for order ${String(refund.order).slice(-6).toUpperCase()}`, refund._id, req);
       return sendSuccessResponse(res, { refund }, 'Refund request created successfully', 201);
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -246,6 +249,7 @@ const supportController = {
         message: messagePayload,
       });
 
+      await logCustomerActivity(userId, 'Ticket Updated', 'support', `Added message to ticket: "${ticket.subject}"`, ticket._id, req);
       return sendSuccessResponse(res, { ticket: updatedTicket }, 'Message added successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -287,6 +291,8 @@ const supportController = {
         status: updatedTicket.status,
       });
 
+      const eventName = status === 'closed' ? 'Ticket Closed' : 'Ticket Reopened';
+      await logCustomerActivity(userId, eventName, 'support', `Ticket status updated to ${status}`, ticket._id, req);
       return sendSuccessResponse(res, { ticket: updatedTicket }, 'Ticket status updated successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -336,6 +342,7 @@ const supportController = {
         status: returnRequest.status,
       });
 
+      await logCustomerActivity(userId, 'Order Returned', 'orders', `Return request created for order ${String(returnRequest.order).slice(-6).toUpperCase()}`, returnRequest._id, req);
       return sendSuccessResponse(res, { returnRequest }, 'Return request created successfully', 201);
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -421,6 +428,8 @@ const supportController = {
       const payload = { ticketId: updatedTicket._id, orderId: updatedTicket.order, status: updatedTicket.status };
       emitToAdmins(req.app, socketEvents.DOMAIN.TICKET_UPDATED, payload);
       emitToUser(req.app, updatedTicket.user, socketEvents.DOMAIN.TICKET_UPDATED, payload);
+      const eventName = status === 'closed' ? 'Ticket Closed' : 'Ticket Reopened';
+      await logCustomerActivity(updatedTicket.user, eventName, 'support', `Ticket status updated to ${status} by administrator`, updatedTicket._id, req);
       return sendSuccessResponse(res, { ticket: updatedTicket }, 'Ticket status updated successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -456,6 +465,9 @@ const supportController = {
       const payload = { returnId: returnRequest._id, orderId: returnRequest.order, status: returnRequest.status };
       emitToAdmins(req.app, socketEvents.DOMAIN.RETURN_UPDATED, payload);
       emitToUser(req.app, returnRequest.user, socketEvents.DOMAIN.RETURN_UPDATED, payload);
+      if (status === 'approved' || status === 'completed') {
+        await logCustomerActivity(returnRequest.user, 'Order Returned', 'orders', `Order return request approved/completed for order ${String(returnRequest.order).slice(-6).toUpperCase()}`, returnRequest._id, req);
+      }
       return sendSuccessResponse(res, { returnRequest }, 'Return status updated successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -469,6 +481,7 @@ const supportController = {
       const payload = { returnId: returnRequest._id, orderId: returnRequest.order, status: returnRequest.status };
       emitToAdmins(req.app, socketEvents.DOMAIN.RETURN_UPDATED, payload);
       emitToUser(req.app, returnRequest.user, socketEvents.DOMAIN.RETURN_UPDATED, payload);
+      await logCustomerActivity(returnRequest.user, 'Order Returned', 'orders', `Order return request approved for order ${String(returnRequest.order).slice(-6).toUpperCase()}`, returnRequest._id, req);
       return sendSuccessResponse(res, { returnRequest }, 'Return request approved successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -507,6 +520,9 @@ const supportController = {
       const payload = { refundId: refund._id, orderId: refund.order, status: refund.status };
       emitToAdmins(req.app, socketEvents.DOMAIN.REFUND_UPDATED, payload);
       emitToUser(req.app, refund.user, socketEvents.DOMAIN.REFUND_UPDATED, payload);
+      if (status === 'completed' || status === 'approved') {
+        await logCustomerActivity(refund.user, 'Refund Completed', 'orders', `Refund completed for order ${String(refund.order).slice(-6).toUpperCase()}`, refund._id, req);
+      }
       return sendSuccessResponse(res, { refund }, 'Refund status updated successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);

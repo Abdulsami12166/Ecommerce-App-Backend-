@@ -22,6 +22,7 @@ const bulkOperationsController = require('../../controllers/admin/bulkOperations
 const replacementsController = require('../replacements/replacements.controller');
 const userAdminController = require('../../controllers/admin/userAdminController');
 const productAdminController = require('../../controllers/admin/productAdminController');
+const customerAuditController = require('../../controllers/admin/customerAuditController');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -558,6 +559,9 @@ router.patch('/invoices/:invoiceId/status', requireAdminAuth, authorizePermissio
 router.get('/invoices/stats/overview', requireAdminAuth, authorizePermission('analytics:view'), invoiceController.getInvoiceStats);
 
 // ============ AUDIT LOGS ============
+router.get('/audit-logs/customers', requireAdminAuth, authorizePermission('audit:view'), customerAuditController.getCustomerAuditLogs);
+router.get('/customers/:id/audit-logs', requireAdminAuth, authorizePermission('users:view'), customerAuditController.getSingleCustomerAuditLogs);
+router.get('/customers/:id/history-summary', requireAdminAuth, authorizePermission('users:view'), customerAuditController.getCustomerHistorySummary);
 router.get('/audit-logs', requireAdminAuth, authorizePermission('audit:view'), auditLogController.getAllAuditLogs);
 router.get('/audit-logs/:logId', requireAdminAuth, authorizePermission('audit:view'), auditLogController.getAuditLogDetails);
 router.get('/audit-logs/user/:userId', requireAdminAuth, authorizePermission('audit:view'), auditLogController.getUserActivity);

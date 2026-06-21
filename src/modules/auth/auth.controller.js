@@ -1,9 +1,14 @@
 const { sendSuccess } = require('../../shared/utils/apiResponse');
 const authService = require('./auth.service');
+const { logCustomerActivity } = require('../../utils/auditLogger');
 
 const registerUser = async (req, res, next) => {
   try {
     const data = await authService.registerUser(req.body);
+    const userId = data.user?.id || data.user?._id;
+    if (userId) {
+      await logCustomerActivity(userId, 'Account Registration', 'authentication', 'Customer account registered successfully', '', req);
+    }
     return sendSuccess(res, 201, 'Registration successful', data);
   } catch (error) {
     return next(error);
@@ -25,6 +30,10 @@ const verifyOtp = async (req, res, next) => {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
+    const userId = data.user?.id || data.user?._id;
+    if (userId) {
+      await logCustomerActivity(userId, 'Login', 'authentication', 'Customer logged in successfully via OTP verification', '', req);
+    }
     return sendSuccess(res, 200, 'OTP verified successfully', data);
   } catch (error) {
     return next(error);
@@ -56,6 +65,13 @@ const forgotPassword = async (req, res, next) => {
 const resetPassword = async (req, res, next) => {
   try {
     await authService.resetUserPassword(req.body);
+    try {
+      const User = require('../../models/User');
+      const user = await User.findOne({ email: req.body.email });
+      if (user) {
+        await logCustomerActivity(user._id, 'Password Reset', 'authentication', 'Customer password was reset successfully', '', req);
+      }
+    } catch (_) {}
     return sendSuccess(res, 200, 'Password reset successfully. Please sign in again.');
   } catch (error) {
     return next(error);
@@ -73,6 +89,7 @@ const getMe = async (req, res, next) => {
 
 const logoutUser = async (req, res, next) => {
   try {
+    await logCustomerActivity(req.userId, 'Logout', 'authentication', 'Customer logged out', '', req);
     await authService.logoutUser(req.userId, req.app, {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],

@@ -2,6 +2,7 @@ const replacementsRepository = require('./replacements.repository');
 const { sendErrorResponse, sendSuccessResponse } = require('../../utils/responseHandler');
 const { emitToAdmins, emitToUser } = require('../../shared/events/eventBus');
 const { socketEvents } = require('../../shared/events/socketEvents');
+const { logCustomerActivity } = require('../../utils/auditLogger');
 
 const replacementsController = {
   // Create replacement request
@@ -35,6 +36,7 @@ const replacementsController = {
         status: replacementRequest.status,
       });
 
+      await logCustomerActivity(userId, 'Replacement Requested', 'orders', `Replacement requested for order ${String(replacementRequest.order).slice(-6).toUpperCase()}`, replacementRequest._id, req);
       return sendSuccessResponse(res, { replacementRequest }, 'Replacement request created successfully', 201);
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
@@ -113,6 +115,11 @@ const replacementsController = {
         adminNotes: updatedReplacement.adminNotes,
       });
 
+      if (status === 'approved') {
+        await logCustomerActivity(updatedReplacement.user, 'Replacement Approved', 'orders', `Replacement approved for order ${String(updatedReplacement.order).slice(-6).toUpperCase()}`, updatedReplacement._id, req);
+      } else if (status === 'delivered' || status === 'completed') {
+        await logCustomerActivity(updatedReplacement.user, 'Replacement Delivered', 'orders', `Replacement delivered for order ${String(updatedReplacement.order).slice(-6).toUpperCase()}`, updatedReplacement._id, req);
+      }
       return sendSuccessResponse(res, { replacementRequest: updatedReplacement }, 'Replacement status updated successfully');
     } catch (error) {
       return sendErrorResponse(res, error.message, 500);
