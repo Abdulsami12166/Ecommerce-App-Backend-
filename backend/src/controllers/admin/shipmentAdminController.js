@@ -14,9 +14,9 @@ const syncShipmentStatusesWithOrders = async () => {
     const Order = require('../../models/Order');
     const shipments = await Shipment.find().populate('order');
     
-    // Find all orders that should have a shipment
+    // Find all orders that should have a shipment (any active order)
     const eligibleOrders = await Order.find({
-      orderStatus: { $in: ['shipped', 'delivered', 'out-for-delivery', 'packed'] }
+      orderStatus: { $nin: ['cancelled', 'failed', 'returned'] }
     }).populate('user');
 
     for (const order of eligibleOrders) {
@@ -84,6 +84,8 @@ const syncShipmentStatusesWithOrders = async () => {
         targetStatus = 'out_for_delivery';
       } else if (sh.order.orderStatus === 'packed' && sh.status !== 'packed') {
         targetStatus = 'packed';
+      } else if (['pending', 'paid', 'processing', 'order-confirmed'].includes(sh.order.orderStatus) && sh.status !== 'pending') {
+        targetStatus = 'pending';
       }
 
       if (targetStatus) {
