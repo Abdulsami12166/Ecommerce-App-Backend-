@@ -21,10 +21,10 @@ const paymentDetailsSchema = new mongoose.Schema(
 
 const refundRequestSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
-    returnRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'ReturnRequest' },
-    items: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    user: { type: mongoose.Schema.Types.Mixed, ref: 'User', required: true },
+    order: { type: mongoose.Schema.Types.Mixed, ref: 'Order' },
+    returnRequest: { type: mongoose.Schema.Types.Mixed, ref: 'ReturnRequest' },
+    items: [{ type: mongoose.Schema.Types.Mixed, ref: 'Product' }],
     reason: {
       type: String,
       enum: ['return', 'cancellation', 'complaint', 'duplicate_charge', 'other'],
