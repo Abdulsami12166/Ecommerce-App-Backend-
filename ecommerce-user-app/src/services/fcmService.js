@@ -1,5 +1,6 @@
 import { Platform, NativeModules, PermissionsAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import messaging from '@react-native-firebase/messaging';
 
 const FCM_TOKEN_KEY = '@ecommerce/fcm_token';
 const NOTIFICATION_HISTORY_KEY = '@ecommerce/notification_history';
@@ -86,11 +87,31 @@ export class FCMService {
       // Try to get cached token first
       let cachedToken = await AsyncStorage.getItem(FCM_TOKEN_KEY);
 
-      if (cachedToken) {
+      if (cachedToken && !cachedToken.startsWith('fcm_mock_')) {
         return cachedToken;
       }
 
-      // Generate new token (in real app, this would come from Firebase)
+      // Try to get real FCM token
+      let token = null;
+      try {
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+        if (enabled) {
+          token = await messaging().getToken();
+        }
+      } catch (fcmError) {
+        console.warn('[FCM] Failed to get real FCM token, falling back to mock:', fcmError.message);
+      }
+
+      if (token) {
+        await AsyncStorage.setItem(FCM_TOKEN_KEY, token);
+        return token;
+      }
+
+      // Generate new mock token as fallback
       const newToken = this.generateFCMToken();
       await AsyncStorage.setItem(FCM_TOKEN_KEY, newToken);
 
@@ -107,7 +128,7 @@ export class FCMService {
   static generateFCMToken() {
     const timestamp = Date.now().toString();
     const random = Math.random().toString(36).substring(2, 15);
-    return `fcm_${timestamp}_${random}`.substring(0, 152);
+    return `fcm_mock_${timestamp}_${random}`.substring(0, 152);
   }
 
   /**
@@ -115,14 +136,20 @@ export class FCMService {
    * Called when notification arrives while app is running
    */
   static setupForegroundNotificationHandler() {
-    if (NativeModules.FCMBridgeModule?.setForegroundNotificationHandler) {
-      NativeModules.FCMBridgeModule.setForegroundNotificationHandler((notification) => {
-        try {
-          this.handleForegroundNotification(notification);
-        } catch (error) {
-          console.error('Foreground notification error:', error);
-        }
+    try {
+      messaging().onMessage(async remoteMessage => {
+        console.log('[FCM] Foreground notification received:', remoteMessage);
+        this.handleForegroundNotification({
+          messageId: remoteMessage.messageId,
+          notification: {
+            title: remoteMessage.notification?.title || '',
+            body: remoteMessage.notification?.body || '',
+          },
+          data: remoteMessage.data || {},
+        });
       });
+    } catch (err) {
+      console.warn('[FCM] Failed to setup foreground message handler:', err.message);
     }
   }
 
@@ -131,14 +158,20 @@ export class FCMService {
    * Called when notification is tapped from status bar
    */
   static setupBackgroundNotificationHandler() {
-    if (NativeModules.FCMBridgeModule?.setNotificationTapHandler) {
-      NativeModules.FCMBridgeModule.setNotificationTapHandler((notification) => {
-        try {
-          this.handleNotificationTap(notification);
-        } catch (error) {
-          console.error('Notification tap error:', error);
-        }
+    try {
+      messaging().onNotificationOpenedApp(remoteMessage => {
+        console.log('[FCM] Notification caused app to open from background:', remoteMessage);
+        this.handleNotificationTap({
+          messageId: remoteMessage.messageId,
+          notification: {
+            title: remoteMessage.notification?.title || '',
+            body: remoteMessage.notification?.body || '',
+          },
+          data: remoteMessage.data || {},
+        });
       });
+    } catch (err) {
+      console.warn('[FCM] Failed to setup background tap handler:', err.message);
     }
   }
 
@@ -175,13 +208,12 @@ export class FCMService {
    * Show native Android notification
    */
   static showNativeNotification(notification) {
-    if (Platform.OS === 'android' && NativeModules.NotificationModule) {
-      NativeModules.NotificationModule.showNotification({
-        id: notification.messageId || `${Date.now()}`,
-        title: notification.notification?.title || 'Notification',
-        body: notification.notification?.body || '',
-        data: notification.data || {},
-      });
+    if (Platform.OS === 'android' && NativeModules.StoreNotification) {
+      NativeModules.StoreNotification.show(
+        notification.notification?.title || 'Notification',
+        notification.notification?.body || '',
+        notification.data || {}
+      );
     }
   }
 
@@ -217,8 +249,35 @@ export class FCMService {
    */
   static async getInitialNotification() {
     try {
-      if (Platform.OS === 'android' && NativeModules.FCMBridgeModule?.getInitialNotification) {
-        return await NativeModules.FCMBridgeModule.getInitialNotification();
+      try {
+        const remoteMessage = await messaging().getInitialNotification();
+        if (remoteMessage) {
+          console.log('[FCM] Initial notification received:', remoteMessage);
+          return {
+            messageId: remoteMessage.messageId,
+            notification: {
+              title: remoteMessage.notification?.title || '',
+              body: remoteMessage.notification?.body || '',
+            },
+            data: remoteMessage.data || {},
+          };
+        }
+      } catch (fcmErr) {
+        console.warn('[FCM] getInitialNotification error:', fcmErr.message);
+      }
+
+      if (Platform.OS === 'android' && NativeModules.StoreNotification?.getInitialNotification) {
+        const nativeData = await NativeModules.StoreNotification.getInitialNotification();
+        if (nativeData) {
+          return {
+            messageId: nativeData.id || `${Date.now()}`,
+            notification: {
+              title: nativeData.title || '',
+              body: nativeData.body || '',
+            },
+            data: nativeData,
+          };
+        }
       }
 
       return null;
@@ -274,13 +333,8 @@ export class FCMService {
    * Send local notification for testing
    */
   static sendTestNotification(title = 'Test', body = 'Test notification', data = {}) {
-    if (Platform.OS === 'android' && NativeModules.NotificationModule) {
-      NativeModules.NotificationModule.showNotification({
-        id: `test_${Date.now()}`,
-        title,
-        body,
-        data,
-      });
+    if (Platform.OS === 'android' && NativeModules.StoreNotification) {
+      NativeModules.StoreNotification.show(title, body, data);
     }
   }
 }

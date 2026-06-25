@@ -63,16 +63,6 @@ export const showLocalNotification = async ({
     if (Platform.OS === 'android' && NativeModules.StoreNotification) {
       NativeModules.StoreNotification.show(title, body, compactNotificationData(data));
     }
-
-    // Also show as FCM notification for consistency
-    if (NativeModules.NotificationModule) {
-      NativeModules.NotificationModule.showNotification({
-        id: `local_${Date.now()}`,
-        title,
-        body,
-        data: compactNotificationData(data),
-      });
-    }
   }
 
   return granted;
