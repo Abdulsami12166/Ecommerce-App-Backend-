@@ -117,7 +117,7 @@ exports.getCustomerHistorySummary = async (req, res, next) => {
 
     const loginHistory = await CustomerAuditLog.find({
       user: userQuery,
-      action: 'login'
+      action: { $regex: /^login$/i }
     }).sort({ createdAt: -1 });
 
     const timeline = await CustomerAuditLog.find({

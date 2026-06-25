@@ -292,34 +292,65 @@ const ProductDetails = ({ navigation, route }) => {
           </Text>
 
           {variants.length ? (
-            <>
-              <Text style={styles.sectionTitle}>Choose Variant</Text>
-              <View style={styles.variantGrid}>
-                {variants.map(variant => {
-                  const id = String(variant._id || variant.id || variant.sku || `${variant.name}-${variant.value}`)
-                  const active = id === String(selectedVariant?._id || selectedVariant?.id || selectedVariant?.sku || '')
-                  return (
-                    <TouchableOpacity
-                      key={id}
-                      disabled={(variant.stock ?? 0) <= 0}
-                      style={[styles.variantCard, active && styles.variantCardActive, (variant.stock ?? 0) <= 0 && styles.variantCardDisabled]}
-                      onPress={() => {
-                        setSelectedVariantId(id)
-                        // reset size selection when user changes variant
-                        setSelectedSize('')
-                      }}>
-                      <View style={styles.variantTitleRow}>
-                        {variant.attributes?.color ? (
-                          <View style={[styles.variantColor, {backgroundColor: String(variant.attributes.color)}]} />
-                        ) : null}
-                        <Text style={[styles.variantTitle, active && styles.variantTitleActive]}>{variant.value || variant.name || 'Default'}</Text>
-                      </View>
-                      <Text style={[styles.variantMeta, active && styles.variantMetaActive]}>{formatCurrency(variant.price ?? product.price)} | Stock {variant.stock ?? 0}</Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            </>
+            variants.some(v => v.attributes?.color) ? (
+              <>
+                <Text style={styles.sectionTitle}>Choose Color</Text>
+                <View style={styles.colorRow}>
+                  {variants.map(variant => {
+                    const id = String(variant._id || variant.id || variant.sku || `${variant.name}-${variant.value}`)
+                    const active = id === String(selectedVariant?._id || selectedVariant?.id || selectedVariant?.sku || '')
+                    const colorVal = variant.attributes?.color;
+                    if (!colorVal) return null;
+                    return (
+                      <TouchableOpacity
+                        key={id}
+                        disabled={(variant.stock ?? 0) <= 0}
+                        style={[
+                          styles.colorDot,
+                          { backgroundColor: String(colorVal) },
+                          active && styles.colorActive,
+                          (variant.stock ?? 0) <= 0 && { opacity: 0.35 }
+                        ]}
+                        onPress={() => {
+                          setSelectedVariantId(id)
+                          // reset size selection when user changes variant
+                          setSelectedSize('')
+                        }}
+                      />
+                    )
+                  })}
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.sectionTitle}>Choose Variant</Text>
+                <View style={styles.variantGrid}>
+                  {variants.map(variant => {
+                    const id = String(variant._id || variant.id || variant.sku || `${variant.name}-${variant.value}`)
+                    const active = id === String(selectedVariant?._id || selectedVariant?.id || selectedVariant?.sku || '')
+                    return (
+                      <TouchableOpacity
+                        key={id}
+                        disabled={(variant.stock ?? 0) <= 0}
+                        style={[styles.variantCard, active && styles.variantCardActive, (variant.stock ?? 0) <= 0 && styles.variantCardDisabled]}
+                        onPress={() => {
+                          setSelectedVariantId(id)
+                          // reset size selection when user changes variant
+                          setSelectedSize('')
+                        }}>
+                        <View style={styles.variantTitleRow}>
+                          {variant.attributes?.color ? (
+                            <View style={[styles.variantColor, {backgroundColor: String(variant.attributes.color)}]} />
+                          ) : null}
+                          <Text style={[styles.variantTitle, active && styles.variantTitleActive]}>{variant.value || variant.name || 'Default'}</Text>
+                        </View>
+                        <Text style={[styles.variantMeta, active && styles.variantMetaActive]}>{formatCurrency(variant.price ?? product.price)} | Stock {variant.stock ?? 0}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              </>
+            )
           ) : null}
 
           {supportsSize ? (
