@@ -48,7 +48,7 @@ exports.addTimelineEvent = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'event and description are required' });
   }
 
-  const order = await Order.findById(orderId);
+  const order = await Order.findById(orderId).select('statusHistory');
   if (!order) {
     return res.status(404).json({ success: false, message: 'Order not found' });
   }
@@ -59,20 +59,21 @@ exports.addTimelineEvent = asyncHandler(async (req, res) => {
     timestamp: new Date(),
   };
 
-  order.statusHistory.push(newEntry);
-  await order.save();
+  await Order.updateOne(
+    { _id: orderId },
+    { $push: { statusHistory: newEntry } }
+  );
 
-  const savedIndex = order.statusHistory.length - 1;
-  const savedEntry = order.statusHistory[savedIndex];
+  const savedIndex = (order.statusHistory || []).length;
 
   res.status(201).json({
     success: true,
     message: 'Timeline event added successfully',
     data: {
       id: `evt_${savedIndex}`,
-      timestamp: savedEntry.timestamp,
-      event: savedEntry.status,
-      description: savedEntry.label,
+      timestamp: newEntry.timestamp,
+      event: newEntry.status,
+      description: newEntry.label,
       actor: actor || 'admin',
       metadata: metadata || {},
     },

@@ -536,6 +536,9 @@ router.get('/products', requireAdminAuth, authorizePermission('products:view'), 
 router.post('/products', requireAdminAuth, authorizePermission('products:create'), upload.array('images'), productAdminController.adminCreateProduct);
 router.put('/products/:id', requireAdminAuth, authorizePermission('products:create'), upload.array('images'), productAdminController.adminUpdateProduct);
 router.delete('/products/:id', requireAdminAuth, authorizePermission('products:delete'), productAdminController.adminDeleteProduct);
+router.post('/products/:id/variants', requireAdminAuth, authorizePermission('products:create'), upload.array('images'), productAdminController.adminCreateVariant);
+router.patch('/products/:id/variants/:variantId', requireAdminAuth, authorizePermission('products:create'), upload.array('images'), productAdminController.adminUpdateVariant);
+router.delete('/products/:id/variants/:variantId', requireAdminAuth, authorizePermission('products:delete'), productAdminController.adminDeleteVariant);
 
 // ============ ORDERS ============
 router.get('/orders', requireAdminAuth, authorizePermission('orders:view'), adminController.getOrders);
@@ -545,8 +548,8 @@ router.patch('/orders/:id/status', requireAdminAuth, authorizePermission('orders
 router.delete('/orders/:id', requireAdminAuth, authorizePermission('orders:update'), adminController.deleteOrder);
 
 // Order timeline routes
-router.get('/orders/:orderId/timeline', requireAdminAuth, authorizePermission('orders:view'), adminController.getOrderTimeline);
-router.post('/orders/:orderId/timeline/event', requireAdminAuth, authorizePermission('orders:update'), adminController.addOrderTimelineEvent);
+router.get('/orders/:orderId/timeline', requireAdminAuth, authorizePermission('orders:view'), orderTimelineController.getOrderTimeline);
+router.post('/orders/:orderId/timeline/event', requireAdminAuth, authorizePermission('orders:update'), orderTimelineController.addTimelineEvent);
 
 // ============ INVOICES ============
 router.get('/invoices', requireAdminAuth, authorizePermission('finance:view'), invoiceController.getAllInvoices);

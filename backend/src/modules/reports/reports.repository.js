@@ -133,13 +133,21 @@ const reportsRepository = {
   },
 
   async getInventoryReport(startDate, endDate) {
-    const inventories = await Inventory.find().populate('product', 'name price');
+    try {
+      const inventoryController = require('../../controllers/admin/inventoryAdminController');
+      if (inventoryController.syncInventoryWithProducts) {
+        await inventoryController.syncInventoryWithProducts();
+      }
+    } catch (_) {}
+
+    const inventories = await Inventory.find().populate('product', 'name title price');
     
     const totalStockValue = inventories.reduce((sum, inv) => {
-      return sum + ((inv.currentStock || 0) * (inv.product?.price || 0));
+      const price = inv.product?.price || 0;
+      return sum + ((inv.currentStock || 0) * price);
     }, 0);
 
-    const lowStockAlerts = inventories.filter(inv => inv.lowStockAlert).length;
+    const lowStockAlerts = inventories.filter(inv => inv.lowStockAlert || inv.currentStock <= inv.reorderLevel).length;
     const outOfStockItems = inventories.filter(inv => inv.currentStock === 0).length;
 
     // Get recent stock movements
@@ -150,7 +158,6 @@ const reportsRepository = {
       { $limit: 20 },
       {
         $project: {
-          id: '$stockMovements._id',
           product: '$product',
           type: '$stockMovements.type',
           quantity: '$stockMovements.quantity',
@@ -160,11 +167,11 @@ const reportsRepository = {
       },
     ]);
 
-    const movementsData = await Promise.all(movements.map(async (mov) => {
-      const product = await Product.findById(mov.product).select('name');
+    const movementsData = await Promise.all(movements.map(async (mov, idx) => {
+      const product = await Product.findById(mov.product).select('name title');
       return {
-        id: mov.id,
-        product: product?.name || 'Unknown',
+        id: `mov_${idx}_${Date.now()}`,
+        product: product?.name || product?.title || 'Unknown Product',
         type: mov.type,
         quantity: mov.quantity,
         reason: mov.reason,
