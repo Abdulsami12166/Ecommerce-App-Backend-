@@ -42,7 +42,7 @@ const adminRepository = {
       .select('name email phone role avatar isVerified blocked lastLoginAt createdAt')
       .sort({ createdAt: -1 }),
   getAdmins: () =>
-    User.find({ role: { $in: ['admin', 'super-admin', 'product-manager', 'support'] } })
+    User.find({ role: { $in: ['admin', 'super-admin', 'product-manager', 'inventory-manager', 'support', 'finance-manager', 'customer-service'] } })
       .select('name email phone role avatar isVerified blocked lastLoginAt createdAt updatedAt')
       .sort({ createdAt: -1 }),
   getCustomers: ({ page = 1, limit = 20, search = '', status = '', sortBy = 'createdAt', sortOrder = 'desc' } = {}) => {
